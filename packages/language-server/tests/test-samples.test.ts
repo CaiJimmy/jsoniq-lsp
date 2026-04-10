@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { collectSyntaxDiagnostics } from "@/server/parser.js";
+import { collectSyntaxDiagnostics } from "../src/server/parser";
 
 type SampleExpectation = "valid" | "invalid";
 

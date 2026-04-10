@@ -14,8 +14,8 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { jsoniqLexer } from "@/grammar/jsoniqLexer.js";
-import { jsoniqParser } from "@/grammar/jsoniqParser.js";
+import { jsoniqLexer } from "../grammar/jsoniqLexer.js";
+import { jsoniqParser } from "../grammar/jsoniqParser.js";
 
 class CollectingErrorListener extends BaseErrorListener {
     public readonly diagnostics: Diagnostic[] = [];

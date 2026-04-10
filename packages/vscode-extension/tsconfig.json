@@ -4,21 +4,17 @@
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "outDir": "dist",
-        "rootDir": ".",
+        "rootDir": "src",
         "strict": true,
         "noUncheckedIndexedAccess": true,
         "exactOptionalPropertyTypes": true,
-        "declaration": true,
         "sourceMap": true,
         "skipLibCheck": true,
-        "paths": {
-            "@/*": [
-                "./src/*"
-            ],
-        }
+        "lib": [
+            "ES2022"
+        ]
     },
     "include": [
-        "src",
-        "tests"
+        "src"
     ]
 }
