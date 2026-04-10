@@ -10,9 +10,14 @@
         "exactOptionalPropertyTypes": true,
         "declaration": true,
         "sourceMap": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ],
+        }
     },
     "include": [
         "src"
-    ]
+    ],
 }
