@@ -72,6 +72,25 @@ describe("JSONiq document symbols", () => {
         ]);
     });
 
+    it("collects multiple variables from a single for clause", () => {
+        const document = TextDocument.create(
+            "file:///for-multi-symbols.jq",
+            "jsoniq",
+            1,
+            [
+                "for $x in (1, 2, 3), $y in (1, 2, 3)",
+                "return 10 * $x + $y",
+            ].join("\n"),
+        );
+
+        const symbolNames = collectDocumentSymbols(document).map((symbol) => symbol.name);
+
+        expect(symbolNames).toEqual([
+            "$x",
+            "$y",
+        ]);
+    });
+
     it("collects function-parameter and FLWOR bindings", () => {
         const document = TextDocument.create(
             "file:///flowr-symbols.jq",
