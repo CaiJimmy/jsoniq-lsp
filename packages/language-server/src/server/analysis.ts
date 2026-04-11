@@ -40,9 +40,18 @@ export interface VariableReference {
     declaration: VariableDeclaration | undefined;
 }
 
+export interface VariableOccurrenceIndexEntry {
+    startOffset: number;
+    endOffset: number;
+    declaration: VariableDeclaration;
+    reference: VariableReference | undefined;
+}
+
 export interface JsoniqVariableScopeAnalysis {
     declarations: VariableDeclaration[];
     references: VariableReference[];
+    referencesByDeclaration: Map<VariableDeclaration, VariableReference[]>;
+    occurrenceIndex: VariableOccurrenceIndexEntry[];
 }
 
 interface ScopeFrame {
@@ -53,6 +62,8 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
     const parseResult = parseJsoniqDocument(document);
     const declarations: VariableDeclaration[] = [];
     const references: VariableReference[] = [];
+    const referencesByDeclaration = new Map<VariableDeclaration, VariableReference[]>();
+    const occurrenceIndex: VariableOccurrenceIndexEntry[] = [];
     const scopeStack: ScopeFrame[] = [{ declarationsByName: new Map() }];
 
     const pushScope = (): void => {
@@ -76,6 +87,14 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
     const declare = (declaration: VariableDeclaration): void => {
         declarations.push(declaration);
         currentScope().declarationsByName.set(declaration.name, declaration);
+        referencesByDeclaration.set(declaration, []);
+        const declarationOffsets = offsetsFromRange(declaration.selectionRange, document);
+        occurrenceIndex.push({
+            startOffset: declarationOffsets.startOffset,
+            endOffset: declarationOffsets.endOffset,
+            declaration,
+            reference: undefined,
+        });
     };
 
     const resolve = (name: string): VariableDeclaration | undefined => {
@@ -107,12 +126,31 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
         }
 
         if (node instanceof VarRefContext && !isDeclarationVarRef(node)) {
-            references.push({
+            const name = varRefName(node);
+            const declaration = resolve(name);
+            const reference = {
                 name: varRefName(node),
                 node,
                 range: rangeFromNode(node, document),
-                declaration: resolve(varRefName(node)),
-            });
+                declaration,
+            } satisfies VariableReference;
+
+            references.push(reference);
+
+            if (declaration !== undefined) {
+                const declarationReferences = referencesByDeclaration.get(declaration);
+                if (declarationReferences !== undefined) {
+                    declarationReferences.push(reference);
+                }
+
+                const referenceOffsets = offsetsFromRange(reference.range, document);
+                occurrenceIndex.push({
+                    startOffset: referenceOffsets.startOffset,
+                    endOffset: referenceOffsets.endOffset,
+                    declaration,
+                    reference,
+                });
+            }
         }
 
         for (let index = 0; index < node.getChildCount(); index += 1) {
@@ -156,9 +194,18 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
 
     visit(parseResult.tree);
 
+    occurrenceIndex.sort((left, right) => {
+        if (left.startOffset === right.startOffset) {
+            return left.endOffset - right.endOffset;
+        }
+        return left.startOffset - right.startOffset;
+    });
+
     return {
         declarations,
         references,
+        referencesByDeclaration,
+        occurrenceIndex,
     };
 }
 
@@ -192,6 +239,51 @@ function createVariableDeclaration(
         node: declarationNode,
         range: rangeFromNode(declarationNode, document),
         selectionRange: rangeFromNode(selectionNode, document),
+    };
+}
+
+export function findVariableOccurrenceAtOffset(
+    analysis: JsoniqVariableScopeAnalysis,
+    offset: number,
+): VariableOccurrenceIndexEntry | undefined {
+    const { occurrenceIndex } = analysis;
+    let low = 0;
+    let high = occurrenceIndex.length - 1;
+
+    while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        const occurrence = occurrenceIndex[mid];
+
+        if (occurrence === undefined) {
+            break;
+        }
+
+        if (offset < occurrence.startOffset) {
+            high = mid - 1;
+            continue;
+        }
+
+        if (offset >= occurrence.endOffset) {
+            low = mid + 1;
+            continue;
+        }
+
+        return occurrence;
+    }
+
+    return undefined;
+}
+
+function offsetsFromRange(range: Range, document: TextDocument): {
+    startOffset: number;
+    endOffset: number;
+} {
+    const startOffset = document.offsetAt(range.start);
+    const endOffset = document.offsetAt(range.end);
+
+    return {
+        startOffset,
+        endOffset: Math.max(endOffset, startOffset),
     };
 }
 

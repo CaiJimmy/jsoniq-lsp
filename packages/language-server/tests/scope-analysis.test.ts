@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { analyzeVariableScopes } from "../src/server/analysis.js";
+import { analyzeVariableScopes, findVariableOccurrenceAtOffset } from "../src/server/analysis.js";
 
 describe("JSONiq variable scope analysis", () => {
     it("collects variable declarations from function params and FLWOR clauses", () => {
@@ -128,5 +128,38 @@ describe("JSONiq variable scope analysis", () => {
             { name: "$y", line: 1, resolvedTo: "$y", resolvedKind: "for" },
             { name: "$iy", line: 1, resolvedTo: "$iy", resolvedKind: "for-position" },
         ]);
+    });
+
+    it("stores references per declaration and supports binary-search occurrence lookup", () => {
+        const document = TextDocument.create(
+            "file:///scope-index.jq",
+            "jsoniq",
+            1,
+            [
+                "declare function local:f($x) {",
+                "  let $y := $x + 1",
+                "  return $y + $x",
+                "};",
+            ].join("\n"),
+        );
+
+        const analysis = analyzeVariableScopes(document);
+        const parameter = analysis.declarations.find((declaration) => declaration.name === "$x" && declaration.kind === "parameter");
+
+        expect(parameter).toBeDefined();
+
+        if (parameter === undefined) {
+            return;
+        }
+
+        const parameterReferences = analysis.referencesByDeclaration.get(parameter);
+        expect(parameterReferences?.map((reference) => reference.range.start.line)).toEqual([1, 2]);
+
+        const offsetOnReturnX = document.offsetAt({ line: 2, character: 14 });
+        const occurrence = findVariableOccurrenceAtOffset(analysis, offsetOnReturnX);
+
+        expect(occurrence?.reference).toBeDefined();
+        expect(occurrence?.declaration.name).toBe("$x");
+        expect(occurrence?.declaration.kind).toBe("parameter");
     });
 });
