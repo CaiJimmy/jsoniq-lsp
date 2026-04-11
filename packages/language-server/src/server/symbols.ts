@@ -20,25 +20,31 @@ import {
 import { parseJsoniqDocument } from "./parser.js";
 import { rangeFromNode } from "./utils/range.js";
 
+/**
+ * Collects DocumentSymbols from the given TextDocument
+ * 
+ * @param document The TextDocument representing the JSONiq source code to analyze
+ * @returns An array of DocumentSymbol objects representing the symbols found in the document, which can be used for features like "document symbols" in the language server
+ */
 export function collectDocumentSymbols(document: TextDocument): DocumentSymbol[] {
     const parseResult = parseJsoniqDocument(document);
     const symbols: DocumentSymbol[] = [];
 
-    visit(parseResult.tree, (node) => {
+    _visit(parseResult.tree, (node) => {
         symbols.push(...(symbolsFromNode(node, document).filter((symbol): symbol is DocumentSymbol => symbol !== undefined)));
     });
 
     return symbols;
 }
 
-function visit(node: ParseTree, callback: (node: ParseTree) => void): void {
+function _visit(node: ParseTree, callback: (node: ParseTree) => void): void {
     callback(node);
 
     for (let index = 0; index < node.getChildCount(); index += 1) {
         const child = node.getChild(index);
 
         if (child !== null) {
-            visit(child, callback);
+            _visit(child, callback);
         }
     }
 }
@@ -47,7 +53,7 @@ function visit(node: ParseTree, callback: (node: ParseTree) => void): void {
  * Collect DocumentSymbols from the given ParseTree node
  * @param node The ParseTree node to collect symbols from
  * @param document The TextDocument representing the JSONiq source code, used to convert node positions to document positions when creating DocumentSymbols
- * @returns An array of DocumentSymbols, which may be empty if the node does not represent a symbol declaration or if the symbol name is invalid (e.g. empty or just "$")
+ * @returns An array of DocumentSymbol objects representing the symbols found in this node, or undefined for nodes that do not represent a symbol (e.g. non-declaration nodes)
  */
 function symbolsFromNode(node: ParseTree, document: TextDocument): Array<DocumentSymbol | undefined> {
     if (node instanceof FunctionDeclContext) {
@@ -145,5 +151,5 @@ function createSymbol(
 function sanitizeSymbolName(name: string): string | null {
     const trimmed = name.trim();
     const isValid = trimmed !== "" && trimmed !== "$";
-    return name !== "" && name !== "$" ? trimmed : null;
+    return isValid ? trimmed : null;
 }
