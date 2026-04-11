@@ -13,6 +13,7 @@ import { collectDocumentSymbols } from "./symbols.js";
 import { findDefinitionLocation } from "./definitions.js";
 import { findReferenceLocations } from "./references.js";
 import { buildRenameWorkspaceEdit, prepareRename } from "./rename.js";
+import { findHover } from "./hover.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -36,6 +37,7 @@ connection.onInitialize((_params: InitializeParams): InitializeResult => ({
         documentSymbolProvider: true,
         definitionProvider: true,
         referencesProvider: true,
+        hoverProvider: true,
         renameProvider: {
             prepareProvider: true,
         },
@@ -94,6 +96,16 @@ connection.onRenameRequest((params) => {
     }
 
     return buildRenameWorkspaceEdit(document, params.position, params.newName);
+});
+
+connection.onHover((params) => {
+    const document = documents.get(params.textDocument.uri);
+
+    if (document === undefined) {
+        return null;
+    }
+
+    return findHover(document, params.position);
 });
 
 documents.onDidOpen(async (event) => {
