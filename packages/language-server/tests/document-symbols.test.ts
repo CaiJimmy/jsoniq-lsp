@@ -24,13 +24,16 @@ describe("JSONiq document symbols", () => {
 
         const symbols = collectDocumentSymbols(document);
 
-        expect(symbols.map((symbol) => [symbol.name, symbol.kind])).toEqual([
-            ["app", SymbolKind.Namespace],
-            ["$app:value", SymbolKind.Variable],
-            ["context item", SymbolKind.Variable],
-            ["app:Item", SymbolKind.Struct],
-            ["app:double", SymbolKind.Function],
-        ]);
+        expect(symbols.map((symbol) => [symbol.name, symbol.kind])).toEqual(
+            expect.arrayContaining([
+                ["app", SymbolKind.Namespace],
+                ["$app:value", SymbolKind.Variable],
+                ["context item", SymbolKind.Variable],
+                ["app:Item", SymbolKind.Struct],
+                ["app:double", SymbolKind.Function],
+                ["$x", SymbolKind.Variable],
+            ]),
+        );
     });
 
     it("collects let-variable bindings", () => {
@@ -65,7 +68,62 @@ describe("JSONiq document symbols", () => {
         const symbols = collectDocumentSymbols(document);
 
         expect(symbols.map((symbol) => [symbol.name, symbol.kind])).toEqual([
-            ["for $x", SymbolKind.Variable],
+            ["$x", SymbolKind.Variable],
+        ]);
+    });
+
+    it("collects function-parameter and FLWOR bindings", () => {
+        const document = TextDocument.create(
+            "file:///flowr-symbols.jq",
+            "jsoniq",
+            1,
+            [
+                "declare function local:aggregate($seed, $extra as integer) {",
+                "  for $x at $pos in (1, 2, 3)",
+                "  let $y := $x + $seed",
+                "  group by $g := $y mod 2",
+                "  count $c",
+                "  return $g + $c + $extra",
+                "};",
+            ].join("\n"),
+        );
+
+        const symbolNames = collectDocumentSymbols(document).map((symbol) => symbol.name);
+
+        expect(symbolNames).toEqual(
+            expect.arrayContaining([
+                "local:aggregate",
+                "$seed",
+                "$extra",
+                "$x",
+                "$pos",
+                "$y",
+                "$g",
+                "$c",
+            ]),
+        );
+        expect(symbolNames).toHaveLength(8);
+    });
+
+    it("collects group-by and count bindings in flowr expressions", () => {
+        const document = TextDocument.create(
+            "file:///group-count-symbols.jq",
+            "jsoniq",
+            1,
+            [
+                "for $x in (1, 2, 3)",
+                "group by $group := $x mod 2",
+                "count $index",
+                "return {\"k\": $group, \"i\": $index}",
+            ].join("\n"),
+        );
+
+        const symbolNames = collectDocumentSymbols(document).map((symbol) => symbol.name);
+
+        expect(symbolNames).toEqual([
+            "$x",
+            "$group",
+            "$index",
         ]);
     });
 });

@@ -7,11 +7,14 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
+    CountClauseContext,
     ContextItemDeclContext,
     ForVarContext,
     FunctionDeclContext,
+    GroupByVarContext,
     LetVarContext,
     NamespaceDeclContext,
+    ParamContext,
     TypeDeclContext,
     VarDeclContext,
 } from "../grammar/jsoniqParser.js";
@@ -22,11 +25,7 @@ export function collectDocumentSymbols(document: TextDocument): DocumentSymbol[]
     const symbols: DocumentSymbol[] = [];
 
     visit(parseResult.tree, (node) => {
-        const symbol = symbolFromNode(node, document);
-
-        if (symbol !== undefined) {
-            symbols.push(symbol);
-        }
+        symbols.push(...symbolsFromNode(node, document));
     });
 
     return symbols;
@@ -44,40 +43,57 @@ function visit(node: ParseTree, callback: (node: ParseTree) => void): void {
     }
 }
 
-function symbolFromNode(node: ParseTree, document: TextDocument): DocumentSymbol | undefined {
+function symbolsFromNode(node: ParseTree, document: TextDocument): DocumentSymbol[] {
     if (node instanceof FunctionDeclContext) {
-        return createSymbol(node._fn_name?.getText() ?? node.qname().getText(), SymbolKind.Function, node, node._fn_name ?? node.qname(), document);
+        return [
+            createSymbol(node._fn_name?.getText() ?? node.qname().getText(), SymbolKind.Function, node, node._fn_name ?? node.qname(), document),
+        ];
     }
 
     if (node instanceof VarDeclContext) {
         const variableName = `$${node.varRef().qname().getText()}`;
-        return createSymbol(variableName, SymbolKind.Variable, node, node.varRef(), document);
+        return [createSymbol(variableName, SymbolKind.Variable, node, node.varRef(), document)];
     }
 
     if (node instanceof LetVarContext) {
         const variableName = `$${node.varRef().qname().getText()}`;
-        return createSymbol(variableName, SymbolKind.Variable, node, node.varRef(), document);
-    }
-
-    if (node instanceof TypeDeclContext) {
-        return createSymbol(node._type_name?.getText() ?? node.qname().getText(), SymbolKind.Struct, node, node._type_name ?? node.qname(), document);
-    }
-
-    if (node instanceof ContextItemDeclContext) {
-        return createSymbol("context item", SymbolKind.Variable, node, node, document);
-    }
-
-    if (node instanceof NamespaceDeclContext) {
-        return createSymbol(node.NCName().getText(), SymbolKind.Namespace, node, node.NCName(), document);
+        return [createSymbol(variableName, SymbolKind.Variable, node, node.varRef(), document)];
     }
 
     if (node instanceof ForVarContext) {
-        for (const varName of node.varRef()) {
-            return createSymbol(`for ${varName.getText()}`, SymbolKind.Variable, node, varName, document);
-        }
+        return node.varRef().map((varRef) => createSymbol(`$${varRef.qname().getText()}`, SymbolKind.Variable, node, varRef, document));
     }
 
-    return undefined;
+    if (node instanceof GroupByVarContext) {
+        const variableName = `$${node.varRef().qname().getText()}`;
+        return [createSymbol(variableName, SymbolKind.Variable, node, node.varRef(), document)];
+    }
+
+    if (node instanceof CountClauseContext) {
+        const variableName = `$${node.varRef().qname().getText()}`;
+        return [createSymbol(variableName, SymbolKind.Variable, node, node.varRef(), document)];
+    }
+
+    if (node instanceof ParamContext) {
+        const variableName = `$${node.qname().getText()}`;
+        return [createSymbol(variableName, SymbolKind.Variable, node, node.qname(), document)];
+    }
+
+    if (node instanceof TypeDeclContext) {
+        return [
+            createSymbol(node._type_name?.getText() ?? node.qname().getText(), SymbolKind.Struct, node, node._type_name ?? node.qname(), document),
+        ];
+    }
+
+    if (node instanceof ContextItemDeclContext) {
+        return [createSymbol("context item", SymbolKind.Variable, node, node, document)];
+    }
+
+    if (node instanceof NamespaceDeclContext) {
+        return [createSymbol(node.NCName().getText(), SymbolKind.Namespace, node, node.NCName(), document)];
+    }
+
+    return [];
 }
 
 function createSymbol(
