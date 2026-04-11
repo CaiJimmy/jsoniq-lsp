@@ -12,6 +12,7 @@ import { collectSyntaxDiagnostics } from "./parser.js";
 import { collectDocumentSymbols } from "./symbols.js";
 import { findDefinitionLocation } from "./definitions.js";
 import { findReferenceLocations } from "./references.js";
+import { buildRenameWorkspaceEdit, prepareRename } from "./rename.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -35,6 +36,9 @@ connection.onInitialize((_params: InitializeParams): InitializeResult => ({
         documentSymbolProvider: true,
         definitionProvider: true,
         referencesProvider: true,
+        renameProvider: {
+            prepareProvider: true,
+        },
     },
     serverInfo: {
         name: "jsoniq-lsp",
@@ -70,6 +74,26 @@ connection.onReferences((params) => {
     }
 
     return findReferenceLocations(document, params.position, params.context.includeDeclaration);
+});
+
+connection.onPrepareRename((params) => {
+    const document = documents.get(params.textDocument.uri);
+
+    if (document === undefined) {
+        return null;
+    }
+
+    return prepareRename(document, params.position);
+});
+
+connection.onRenameRequest((params) => {
+    const document = documents.get(params.textDocument.uri);
+
+    if (document === undefined) {
+        return null;
+    }
+
+    return buildRenameWorkspaceEdit(document, params.position, params.newName);
 });
 
 documents.onDidOpen(async (event) => {
