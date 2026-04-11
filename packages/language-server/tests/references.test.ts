@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { type Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { findReferenceLocations } from "../src/server/references.js";
+import { positionAt, positionAtNth } from "./test-utils.js";
 
 describe("JSONiq references", () => {
     it("finds references for a local variable without crossing shadowed scopes", () => {
@@ -64,27 +64,3 @@ describe("JSONiq references", () => {
         expect(locations.map((location) => location.range.start.line)).toEqual([0]);
     });
 });
-
-function positionAt(document: TextDocument, needle: string): Position {
-    const offset = document.getText().indexOf(needle);
-    if (offset < 0) {
-        throw new Error(`Could not find '${needle}' in document.`);
-    }
-    return document.positionAt(offset);
-}
-
-function positionAtNth(document: TextDocument, needle: string, occurrence: number): Position {
-    const source = document.getText();
-    let offset = -1;
-    let fromIndex = 0;
-
-    for (let index = 0; index <= occurrence; index += 1) {
-        offset = source.indexOf(needle, fromIndex);
-        if (offset < 0) {
-            throw new Error(`Could not find occurrence #${occurrence} for '${needle}'.`);
-        }
-        fromIndex = offset + needle.length;
-    }
-
-    return document.positionAt(offset);
-}
