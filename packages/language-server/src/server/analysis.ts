@@ -1,5 +1,5 @@
 import { ParserRuleContext, TerminalNode, type ParseTree } from "antlr4ng";
-import { type Range } from "vscode-languageserver";
+import { DocumentUri, type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
@@ -16,7 +16,7 @@ import {
 } from "../grammar/jsoniqParser.js";
 import { parseJsoniqDocument } from "./parser.js";
 
-export type VariableDeclarationKind =
+type VariableDeclarationKind =
     | "declare-variable"
     | "let"
     | "for"
@@ -88,7 +88,7 @@ interface ScopeFrame {
  * @param document The TextDocument representing the JSONiq source code to analyze
  * @returns An object containing the results of variable scope analysis, including all variable declarations and references along with their relationships
  */
-export function analyzeVariableScopes(document: TextDocument): JsoniqVariableScopeAnalysis {
+function analyzeVariableScopes(document: TextDocument): JsoniqVariableScopeAnalysis {
     const parseResult = parseJsoniqDocument(document);
     const declarations: VariableDeclaration[] = [];
     const references: VariableReference[] = [];
@@ -433,3 +433,42 @@ function rangeFromNode(node: ParserRuleContext | ParseTree, document: TextDocume
         end: document.positionAt(stop + 1),
     };
 }
+
+/**
+ * Cached analysis results for documents, keyed by document URI and version, 
+ * Used to avoid redundant analysis when the same document is queried multiple times without changes
+ */
+interface CachedAnalysis {
+    version: number;
+    analysis: JsoniqVariableScopeAnalysis;
+}
+
+/** In memory cache for analysis results */
+const analysisCache = new Map<DocumentUri, CachedAnalysis>();
+
+
+/**
+ * Retrieves the variable scope analysis for the given document, using a cache to avoid redundant analysis when possible.
+ * If the analysis for the document is not in the cache or is outdated (i.e. the document version has changed), it performs a new analysis and updates the cache.
+ * This is used to optimize performance when finding definition locations, as analyzing variable scopes can be an expensive operation.
+ * 
+ * @param document The TextDocument representing the JSONiq source code to analyze
+ * @returns The JsoniqVariableScopeAnalysis object containing the results of variable scope analysis for the given document
+ */
+export function getAnalysis(document: TextDocument): JsoniqVariableScopeAnalysis {
+    const cached = analysisCache.get(document.uri);
+
+    if (cached !== undefined && cached.version === document.version) {
+        return cached.analysis;
+    }
+
+    const analysis = analyzeVariableScopes(document);
+
+    analysisCache.set(document.uri, {
+        version: document.version,
+        analysis,
+    });
+
+    return analysis;
+}
+
