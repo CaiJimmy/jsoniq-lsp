@@ -88,7 +88,7 @@ interface ScopeFrame {
  * @param document The TextDocument representing the JSONiq source code to analyze
  * @returns An object containing the results of variable scope analysis, including all variable declarations and references along with their relationships
  */
-function analyzeVariableScopes(document: TextDocument): JsoniqVariableScopeAnalysis {
+export function analyzeVariableScopes(document: TextDocument): JsoniqVariableScopeAnalysis {
     const parseResult = parseJsoniqDocument(document);
     const declarations: VariableDeclaration[] = [];
     const references: VariableReference[] = [];
@@ -445,7 +445,6 @@ interface CachedAnalysis {
 
 /** In memory cache for analysis results */
 const analysisCache = new Map<DocumentUri, CachedAnalysis>();
-
 
 /**
  * Retrieves the variable scope analysis for the given document, using a cache to avoid redundant analysis when possible.
