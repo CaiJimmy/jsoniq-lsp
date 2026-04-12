@@ -509,4 +509,3 @@ export function getAnalysis(document: TextDocument): JsoniqVariableScopeAnalysis
 
     return analysis;
 }
-

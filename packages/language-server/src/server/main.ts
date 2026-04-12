@@ -9,6 +9,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { collectSyntaxDiagnostics } from "./parser.js";
+import { collectSemanticDiagnostics } from "./semantic.js";
 import { collectDocumentSymbols } from "./symbols.js";
 import { findDefinitionLocation } from "./definitions.js";
 import { findReferenceLocations } from "./references.js";
@@ -26,9 +27,17 @@ async function refreshDiagnostics(uri: string): Promise<void> {
         return;
     }
 
+    const syntaxDiagnostics = collectSyntaxDiagnostics(document);
+    const semanticDiagnostics = syntaxDiagnostics.length === 0
+        ? collectSemanticDiagnostics(document)
+        : [];
+
     connection.sendDiagnostics({
         uri: document.uri,
-        diagnostics: collectSyntaxDiagnostics(document),
+        diagnostics: [
+            ...syntaxDiagnostics,
+            ...semanticDiagnostics,
+        ],
     });
 }
 
