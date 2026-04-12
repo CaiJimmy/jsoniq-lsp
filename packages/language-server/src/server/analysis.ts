@@ -36,6 +36,8 @@ export interface VariableDeclaration {
     node: ParseTree;
     range: Range;
     selectionRange: Range;
+    declarationOffset: number;
+    scopeEndOffset: number;
 }
 
 /**
@@ -64,7 +66,7 @@ export interface VariableOccurrenceIndexEntry {
  * Results of variable scope analysis for a JSONiq document
 */
 export interface JsoniqVariableScopeAnalysis {
-    /** All variable declarations found in the document, in the order they were declared. */
+    /** All variable declarations found in the document, sorted by declaration offset in source order. */
     declarations: VariableDeclaration[];
 
     /** Map from variable declarations to the list of references that resolve to that declaration. */
@@ -101,9 +103,12 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
         scopeStack.push({ declarationsByName: new Map() });
     };
 
-    const popScope = (): void => {
-        if (scopeStack.length > 1) {
-            scopeStack.pop();
+    const popScope = (scopeEndOffset: number): void => {
+        const scope = scopeStack.pop();
+        if (scope !== undefined) {
+            for (const declaration of scope.declarationsByName.values()) {
+                declaration.scopeEndOffset = scopeEndOffset;
+            }
         }
     };
 
@@ -118,12 +123,14 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
     /** Declares a variable in the current scope and adds it to the list of declarations and occurrence index. */
     const declare = (declaration: VariableDeclaration): void => {
         declarations.push(declaration);
-        currentScope().declarationsByName.set(declaration.name, declaration);
+        const scope = currentScope();
+        scope.declarationsByName.set(declaration.name, declaration);
         referencesByDeclaration.set(declaration, []);
 
         const declarationOffsets = offsetsFromRange(declaration.selectionRange, document);
+        declaration.declarationOffset = declarationOffsets.startOffset;
         occurrenceIndex.push({
-            startOffset: declarationOffsets.startOffset,
+            startOffset: declaration.declarationOffset,
             endOffset: declarationOffsets.endOffset,
             declaration,
             reference: undefined,
@@ -248,7 +255,8 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
          * we pop that scope to ensure variables declared in that scope are not visible outside of it. 
          * */
         if (newScopeNodeTypes.some((type) => node instanceof type)) {
-            popScope();
+            const scopeOffsets = offsetsFromRange(rangeFromNode(node, document), document);
+            popScope(scopeOffsets.endOffset);
         }
     };
 
@@ -263,12 +271,74 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
         return left.startOffset - right.startOffset;
     });
 
+    const documentEndOffset = document.getText().length;
+    for (const declaration of scopeStack[0]?.declarationsByName.values() ?? []) {
+        declaration.scopeEndOffset = documentEndOffset;
+    }
+
+    declarations.sort((left, right) => left.declarationOffset - right.declarationOffset);
+
     return {
         declarations,
         references,
         referencesByDeclaration,
         occurrenceIndex,
     };
+}
+
+/**
+ * Returns all variable declarations visible at the given offset. Declarations with the same
+ * name are de-duplicated so only the nearest in-scope declaration is returned.
+ *
+ * Strategy:
+ * 1) `declarations` is pre-sorted by `declarationOffset` during analysis.
+ * 2) Binary-search the insertion point for `offset`.
+ * 3) Scan backward to prefer nearest declarations first, keeping one declaration per name.
+ */
+export function getVisibleDeclarationsAtOffset(document: TextDocument, offset: number): VariableDeclaration[] {
+    const analysis = getAnalysis(document);
+    const visibleByName = new Map<string, VariableDeclaration>();
+
+    // Index = first declaration with declarationOffset > offset, so we start scanning backward from index - 1 to find declarations that are declared before the offset.
+    // Between [0, index - 1], we need to check if scopeEndOffset is smaller than the offset to ensure the declaration is still valid
+    // TODO: Find a better way to efficiently find the visible declarations at a given offset without having to scan backward through all declarations before that offset. 
+    let index = upperBoundDeclarationOffset(analysis.declarations, offset) - 1;
+
+    while (index >= 0) {
+        const declaration = analysis.declarations[index];
+
+        // A declaration is visible iff the cursor is before the scope boundary. Because we scan
+        // backward, the first declaration we keep for a name is the nearest (shadowing-aware).
+        if (declaration !== undefined && offset <= declaration.scopeEndOffset && !visibleByName.has(declaration.name)) {
+            visibleByName.set(declaration.name, declaration);
+        }
+
+        index -= 1;
+    }
+
+    return [...visibleByName.values()];
+}
+
+/**
+ * Find the index of the first declaration whose declaration offset is greater than the given offset, using binary search.
+ * 
+ * @returns The index of the first declaration whose declaration offset is **greater** than the given offset, or declarations.length if there is no such declaration.
+*/
+function upperBoundDeclarationOffset(declarations: VariableDeclaration[], offset: number): number {
+    let low = 0;
+    let high = declarations.length;
+
+    while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        const declaration = declarations[mid];
+        if (declaration !== undefined && declaration.declarationOffset <= offset) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+
+    return low;
 }
 
 /**
@@ -293,6 +363,8 @@ function createVariableDeclaration(
         node: declarationNode,
         range: rangeFromNode(declarationNode, document),
         selectionRange: rangeFromNode(selectionNode, document),
+        declarationOffset: 0,
+        scopeEndOffset: document.getText().length,
     };
 }
 

@@ -14,6 +14,7 @@ import { findDefinitionLocation } from "./definitions.js";
 import { findReferenceLocations } from "./references.js";
 import { buildRenameWorkspaceEdit, prepareRename } from "./rename.js";
 import { findHover } from "./hover.js";
+import { findVariableCompletions } from "./completion.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -38,6 +39,9 @@ connection.onInitialize((_params: InitializeParams): InitializeResult => ({
         definitionProvider: true,
         referencesProvider: true,
         hoverProvider: true,
+        completionProvider: {
+            triggerCharacters: ["$"],
+        },
         renameProvider: {
             prepareProvider: true,
         },
@@ -106,6 +110,16 @@ connection.onHover((params) => {
     }
 
     return findHover(document, params.position);
+});
+
+connection.onCompletion((params) => {
+    const document = documents.get(params.textDocument.uri);
+
+    if (document === undefined) {
+        return [];
+    }
+
+    return findVariableCompletions(document, params.position);
 });
 
 documents.onDidOpen(async (event) => {
