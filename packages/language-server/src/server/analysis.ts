@@ -4,10 +4,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
     CountClauseContext,
-    FlowrExprContext,
-    FlowrStatementContext,
     ForVarContext,
-    FunctionDeclContext,
     GroupByVarContext,
     LetVarContext,
     ParamContext,
@@ -16,6 +13,7 @@ import {
 } from "../grammar/jsoniqParser.js";
 import { parseJsoniqDocument } from "./parser.js";
 import { rangeFromNode, offsetsFromRange } from "./utils/range.js";
+import { isNewScopeNode } from "./utils/scope.js";
 
 type VariableDeclarationKind =
     | "declare-variable"
@@ -154,15 +152,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
     };
 
     const visit = (node: ParseTree): void => {
-        /**
-         * A new variable scope is introduced by:
-         * - Function declarations (introducing a new function scope)
-         * - FLWOR expressions and statements (introducing a new FLWOR scope)
-         * Each of these scopes can contain variable declarations that should not be visible outside of that scope, 
-         *  so we push a new scope frame onto the stack when we enter these nodes, and pop it when we exit.
-         */
-        const newScopeNodeTypes = [FunctionDeclContext, FlowrExprContext, FlowrStatementContext];
-        if (newScopeNodeTypes.some((type) => node instanceof type)) {
+        if (isNewScopeNode(node)) {
             pushScope();
         }
 
@@ -254,7 +244,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqVariableSco
          * After visiting the children of the current node, if this node introduced a new scope, 
          * we pop that scope to ensure variables declared in that scope are not visible outside of it. 
          * */
-        if (newScopeNodeTypes.some((type) => node instanceof type)) {
+        if (isNewScopeNode(node)) {
             const scopeOffsets = offsetsFromRange(rangeFromNode(node, document), document);
             popScope(scopeOffsets.endOffset);
         }
