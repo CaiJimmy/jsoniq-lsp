@@ -23,6 +23,7 @@ import { upperBound } from "./utils/binary-search.js";
 import { rangeFromNode } from "./utils/range.js";
 import { isNewScopeNode } from "./utils/scope.js";
 import { comparePositions } from "./utils/position.js";
+import { functionNameWithArity, varRefName } from "./utils/name.js";
 
 type DefinitionKind =
     | "declare-variable"
@@ -182,8 +183,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
 
     const visit = (node: ParseTree): void => {
         if (node instanceof FunctionDeclContext) {
-            const functionName = node._fn_name?.getText() ?? node.qname().getText();
-            declare(createDefinition(functionName, "function", node, node._fn_name ?? node.qname(), document));
+            declare(createDefinition(functionNameWithArity(node), "function", node, node._fn_name ?? node.qname(), document));
         }
 
         if (isNewScopeNode(node)) {
@@ -234,7 +234,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
 
         if (node instanceof FunctionCallContext) {
             const nameNode = node._fn_name ?? node.qname();
-            const name = nameNode.getText();
+            const name = functionNameWithArity(node);
             const declaration = resolve(name);
             const reference = {
                 name,
@@ -258,7 +258,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
 
         if (node instanceof NamedFunctionRefContext) {
             const nameNode = node._fn_name ?? node.qname();
-            const name = nameNode.getText();
+            const name = functionNameWithArity(node);
             const declaration = resolve(name);
             const reference = {
                 name,
@@ -422,7 +422,6 @@ function createDefinition(
     };
 }
 
-
 /**
  * Finds the variable occurrence (declaration or reference) at the given position in the document, and returns the corresponding declaration and reference information.
  * This is used for features like "go to definition" and "find references" to determine which variable declaration or reference the user is trying to navigate to based on the cursor position in the editor.
@@ -480,15 +479,6 @@ export function findVariableOccurrenceNearPosition(
         line: position.line,
         character: position.character + 1,
     });
-}
-
-/**
- * Extracts the variable name from a VarRefContext node, including the leading "$" character.
- * @param node The VarRefContext node representing the variable reference in the parse tree
- * @returns The variable name as a string, including the leading "$" (e.g. "$x")
- */
-function varRefName(node: VarRefContext): string {
-    return `$${node.qname().getText()}`;
 }
 
 /**
