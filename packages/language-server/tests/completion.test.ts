@@ -1,3 +1,4 @@
+import { CompletionItemKind } from "vscode-languageserver";
 import { describe, expect, it } from "vitest";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
@@ -22,6 +23,7 @@ describe("JSONiq completion", () => {
             "$global",
             "$x",
             "$y",
+            "local:f",
         ]);
     });
 
@@ -63,7 +65,33 @@ describe("JSONiq completion", () => {
         const items = findVariableCompletions(document, positionAtNth(document, "$global", 1));
         const labels = items.map((item) => item.label);
 
-        expect(labels).toEqual(["$global"]);
+        expect(labels).toEqual(["$global", "local:f"]);
+    });
+
+    it("includes the enclosing function while completing inside an incomplete function body", () => {
+        const source = [
+            "declare function x:f($a, $b as integer) {",
+            "    $a + ",
+            "};",
+        ].join("\n");
+        const document = TextDocument.create("file:///completion-function-body-incomplete.jq", "jsoniq", 1, source);
+
+        const items = findVariableCompletions(document, {
+            line: 1,
+            character: "    $a + ".length,
+        });
+        const labels = items.map((item) => item.label);
+
+        expect(labels).toEqual([
+            "$a",
+            "$b",
+            "x:f",
+        ]);
+
+        expect(items.find((item) => item.label === "x:f")).toMatchObject({
+            kind: CompletionItemKind.Function,
+            detail: "JSONiq function/2",
+        });
     });
 
     it("includes FLWOR clause variables in return completion", () => {
@@ -89,6 +117,7 @@ describe("JSONiq completion", () => {
             "$pos",
             "$x",
             "$y",
+            "local:f",
         ]);
     });
 
@@ -114,6 +143,7 @@ describe("JSONiq completion", () => {
             "$pos",
             "$x",
             "$y",
+            "local:f",
         ]);
     });
     it("includes for and at-position variables while typing top-level return variable", () => {
