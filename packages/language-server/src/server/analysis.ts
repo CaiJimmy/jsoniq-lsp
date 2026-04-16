@@ -296,10 +296,18 @@ export function getVisibleDeclarationsAtOffset(document: TextDocument, offset: n
 
     while (index >= 0) {
         const declaration = analysis.declarations[index];
+        const declarationVisibleFromOffset = declaration !== undefined
+            ? offsetsFromRange(declaration.range, document).endOffset
+            : 0;
 
         // A declaration is visible iff the cursor is before the scope boundary. Because we scan
         // backward, the first declaration we keep for a name is the nearest (shadowing-aware).
-        if (declaration !== undefined && offset <= declaration.scopeEndOffset && !visibleByName.has(declaration.name)) {
+        if (
+            declaration !== undefined
+            && declarationVisibleFromOffset <= offset
+            && offset <= declaration.scopeEndOffset
+            && !visibleByName.has(declaration.name)
+        ) {
             visibleByName.set(declaration.name, declaration);
         }
 

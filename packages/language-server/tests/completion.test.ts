@@ -151,6 +151,16 @@ describe("JSONiq completion", () => {
             "$x",
         ]);
     });
+
+    it("does not include let-bound variable inside its own initializer", () => {
+        const source = [
+            "let $a := $a",
+            "return $a",
+        ].join("\n");
+        const document = TextDocument.create("file:///completion-let-self-init.jq", "jsoniq", 1, source);
+
+        const initializerItems = findVariableCompletions(document, positionAtNth(document, "$a", 1));
+
+        expect(initializerItems.map((item) => item.label)).toEqual([]);
+    });
 });
-
-
