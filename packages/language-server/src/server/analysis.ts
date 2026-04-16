@@ -375,7 +375,7 @@ export function getVisibleDeclarationsAtPosition(document: TextDocument, positio
 
     while (index >= 0) {
         const declaration = analysis.definitions[index];
-        const declarationVisibleFrom = declaration?.range.end;
+        const declarationVisibleFrom = declaration?.kind === "function" ? declaration.selectionRange.end : declaration?.range.end;
 
         // A declaration is visible iff the cursor is before the scope boundary. Because we scan
         // backward, the first declaration we keep for a name is the nearest (shadowing-aware).
