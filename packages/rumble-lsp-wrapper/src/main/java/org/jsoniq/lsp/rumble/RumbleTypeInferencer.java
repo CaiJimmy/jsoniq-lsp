@@ -166,7 +166,7 @@ public final class RumbleTypeInferencer {
         functionTypes.add(new FunctionType(
                 line,
                 column,
-                functionDeclaration.getFunctionIdentifier().toString(),
+                functionDeclaration.getFunctionIdentifier().getName().toString(),
                 parameterTypes,
                 returnType.toString()));
     }
