@@ -78,8 +78,7 @@ export function buildRenameWorkspaceEdit(
         },
     ];
 
-    const targetReferences = analysis.referencesByDeclaration.get(target.declaration) ?? [];
-    for (const reference of targetReferences) {
+    for (const reference of target.declaration.references) {
         edits.push({
             range: reference.range,
             newText: newName,

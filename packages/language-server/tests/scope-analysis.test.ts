@@ -152,8 +152,7 @@ describe("JSONiq variable scope analysis", () => {
             return;
         }
 
-        const parameterReferences = analysis.referencesByDeclaration.get(parameter);
-        expect(parameterReferences?.map((reference) => reference.range.start.line)).toEqual([1, 2]);
+        expect(parameter.references.map((reference) => reference.range.start.line)).toEqual([1, 2]);
 
         const offsetOnReturnX = document.offsetAt({ line: 2, character: 14 });
         const occurrence = findVariableOccurrenceAtOffset(analysis, offsetOnReturnX);
@@ -183,9 +182,8 @@ describe("JSONiq variable scope analysis", () => {
         if (parameter === undefined) {
             return;
         }
-
-        const parameterReferences = analysis.referencesByDeclaration.get(parameter);
-        expect(parameterReferences?.map((reference) => reference.range.start.line)).toEqual([1, 1]);
+        
+        expect(parameter.references.map((reference) => reference.range.start.line)).toEqual([1, 1]);
 
         const offsetOnReturnX = document.offsetAt({ line: 1, character: 13 });
         const occurrence = findVariableOccurrenceAtOffset(analysis, offsetOnReturnX);

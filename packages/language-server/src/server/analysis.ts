@@ -43,6 +43,9 @@ export interface Definition {
 
     /// Offset where this definition is not visible anymore
     scopeEndOffset: number;
+
+    /// List of references that resolve to this declaration
+    references: Reference[];
 }
 
 /**
@@ -74,9 +77,6 @@ export interface JsoniqAnalysis {
     /** All variable declarations found in the document, sorted by declaration offset in source order. */
     definitions: Definition[];
 
-    /** Map from variable declarations to the list of references that resolve to that declaration. */
-    referencesByDeclaration: Map<Definition, Reference[]>;
-
     /** All variable references found in the document, in the order they were encountered during traversal. */
     references: Reference[];
 
@@ -103,7 +103,6 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     const parseResult = parseJsoniqDocument(document);
     const definitions: Definition[] = [];
     const references: Reference[] = [];
-    const referencesByDeclaration = new Map<Definition, Reference[]>();
     const occurrenceIndex: OccurrenceIndexEntry[] = [];
     const scopeStack: ScopeFrame[] = [{ definitionByName: new Map() }];
 
@@ -136,7 +135,6 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     /** Declares a variable in the current scope and adds it to the list of declarations and occurrence index. */
     const declare = (newDef: Definition): void => {
         definitions.push(newDef);
-        referencesByDeclaration.set(newDef, []);
         const scope = currentScope();
 
         if (!scope.definitionByName.has(newDef.name)) {
@@ -214,10 +212,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
 
             // If the declaration could be resolved, add this reference to the list of references for that declaration and to the occurrence index.
             if (declaration !== undefined) {
-                const declarationReferences = referencesByDeclaration.get(declaration);
-                if (declarationReferences !== undefined) {
-                    declarationReferences.push(reference);
-                }
+                declaration.references.push(reference);
 
                 const referenceOffsets = offsetsFromRange(reference.range, document);
                 occurrenceIndex.push({
@@ -305,7 +300,6 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     return {
         definitions,
         references,
-        referencesByDeclaration,
         occurrenceIndex,
     };
 }
@@ -400,6 +394,7 @@ function createVariableDeclaration(
         range: rangeFromNode(declarationNode, document),
         selectionRange: rangeFromNode(selectionNode, document),
         scopeEndOffset: document.getText().length,
+        references: [],
     };
 }
 

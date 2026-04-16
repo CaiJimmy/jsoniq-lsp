@@ -40,12 +40,7 @@ export function findReferenceLocations(
         });
     }
 
-    const targetReferences = analysis.referencesByDeclaration.get(targetDeclaration);
-    if (targetReferences === undefined) {
-        return locations;
-    }
-
-    for (const reference of targetReferences) {
+    for (const reference of targetDeclaration.references) {
         locations.push({
             uri: document.uri,
             range: reference.range,
