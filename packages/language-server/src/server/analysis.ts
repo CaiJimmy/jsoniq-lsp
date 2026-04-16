@@ -9,8 +9,11 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import {
     CountClauseContext,
     ForVarContext,
+    FunctionDeclContext,
+    FunctionCallContext,
     GroupByVarContext,
     LetVarContext,
+    NamedFunctionRefContext,
     ParamContext,
     VarDeclContext,
     VarRefContext,
@@ -28,7 +31,8 @@ type DefinitionKind =
     | "for-position"
     | "group-by"
     | "count"
-    | "parameter";
+    | "parameter"
+    | "function";
 
 /**
  * Represents a variable declaration in the source code, including its name, kind (e.g. function parameter, FLWOR clause variable, etc.), 
@@ -55,11 +59,11 @@ export interface Definition {
 }
 
 /**
- * Represents a reference to a variable in the source code, along with a reference to the corresponding declaration (if it can be resolved).
+ * Represents a reference to a variable or function in the source code, along with a reference to the corresponding declaration (if it can be resolved).
  */
 export interface Reference {
     name: string;
-    node: VarRefContext;
+    node: ParseTree;
     range: Range;
     declaration: Definition | undefined;
 }
@@ -137,7 +141,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
         return scope;
     };
 
-    /** Declares a variable in the current scope and adds it to the list of declarations and occurrence index. */
+    /** Declares a definition in the current scope and adds it to the list of declarations and occurrence index. */
     const declare = (newDef: Definition): void => {
         definitions.push(newDef);
         const scope = currentScope();
@@ -177,12 +181,17 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     };
 
     const visit = (node: ParseTree): void => {
+        if (node instanceof FunctionDeclContext) {
+            const functionName = node._fn_name?.getText() ?? node.qname().getText();
+            declare(createDefinition(functionName, "function", node, node._fn_name ?? node.qname(), document));
+        }
+
         if (isNewScopeNode(node)) {
             pushScope();
         }
 
         if (node instanceof ParamContext) {
-            declare(createVariableDeclaration(`$${node.qname().getText()}`, "parameter", node, node.qname(), document));
+            declare(createDefinition(`$${node.qname().getText()}`, "parameter", node, node.qname(), document));
         }
 
         /**
@@ -195,7 +204,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
          */
         if (node instanceof CountClauseContext) {
             const varRef = node.varRef();
-            declare(createVariableDeclaration(varRefName(varRef), "count", node, varRef, document));
+            declare(createDefinition(varRefName(varRef), "count", node, varRef, document));
         }
 
         // It's a variable reference
@@ -223,6 +232,54 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
             }
         }
 
+        if (node instanceof FunctionCallContext) {
+            const nameNode = node._fn_name ?? node.qname();
+            const name = nameNode.getText();
+            const declaration = resolve(name);
+            const reference = {
+                name,
+                node,
+                range: rangeFromNode(nameNode, document),
+                declaration,
+            } satisfies Reference;
+
+            references.push(reference);
+
+            if (declaration !== undefined) {
+                declaration.references.push(reference);
+
+                occurrenceIndex.push({
+                    range: reference.range,
+                    declaration,
+                    reference,
+                });
+            }
+        }
+
+        if (node instanceof NamedFunctionRefContext) {
+            const nameNode = node._fn_name ?? node.qname();
+            const name = nameNode.getText();
+            const declaration = resolve(name);
+            const reference = {
+                name,
+                node,
+                range: rangeFromNode(nameNode, document),
+                declaration,
+            } satisfies Reference;
+
+            references.push(reference);
+
+            if (declaration !== undefined) {
+                declaration.references.push(reference);
+
+                occurrenceIndex.push({
+                    range: reference.range,
+                    declaration,
+                    reference,
+                });
+            }
+        }
+
         // Recursively visit all child nodes
         for (let index = 0; index < node.getChildCount(); index += 1) {
             const child = node.getChild(index);
@@ -235,29 +292,29 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
         // It's important that we do this after visiting the children, so that if there are references to this variable within its own initializer (e.g. let $x := $x + 1)
         if (node instanceof VarDeclContext) {
             const varRef = node.varRef();
-            declare(createVariableDeclaration(varRefName(varRef), "declare-variable", node, varRef, document));
+            declare(createDefinition(varRefName(varRef), "declare-variable", node, varRef, document));
         }
 
         if (node instanceof LetVarContext) {
             const varRef = node.varRef();
-            declare(createVariableDeclaration(varRefName(varRef), "let", node, varRef, document));
+            declare(createDefinition(varRefName(varRef), "let", node, varRef, document));
         }
 
         if (node instanceof ForVarContext) {
             const variableRefs = node.varRef();
             const boundVariable = variableRefs[0];
             if (boundVariable !== undefined) {
-                declare(createVariableDeclaration(varRefName(boundVariable), "for", node, boundVariable, document));
+                declare(createDefinition(varRefName(boundVariable), "for", node, boundVariable, document));
             }
             const positionVariable = variableRefs[1];
             if (positionVariable !== undefined) {
-                declare(createVariableDeclaration(varRefName(positionVariable), "for-position", node, positionVariable, document));
+                declare(createDefinition(varRefName(positionVariable), "for-position", node, positionVariable, document));
             }
         }
 
         if (node instanceof GroupByVarContext) {
             const varRef = node.varRef();
-            declare(createVariableDeclaration(varRefName(varRef), "group-by", node, varRef, document));
+            declare(createDefinition(varRefName(varRef), "group-by", node, varRef, document));
         }
 
         /** 
@@ -347,7 +404,7 @@ export function getVisibleDeclarationsAtPosition(document: TextDocument, positio
  * @param document The TextDocument containing the source code, used to calculate the range of the declaration in terms of line and character positions
  * @returns A VariableDeclaration object representing this variable declaration, including its name, kind, corresponding parse tree nodes, and range in the source document
  */
-function createVariableDeclaration(
+function createDefinition(
     name: string,
     kind: DefinitionKind,
     declarationNode: ParserRuleContext,

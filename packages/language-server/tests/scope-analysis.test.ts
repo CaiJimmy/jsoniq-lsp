@@ -24,6 +24,7 @@ describe("JSONiq variable scope analysis", () => {
         const declarationNames = analysis.definitions.map((declaration) => declaration.name);
 
         expect(declarationNames).toEqual([
+            "local:f",
             "$a",
             "$b",
             "$x",
@@ -50,7 +51,7 @@ describe("JSONiq variable scope analysis", () => {
         );
 
         const analysis = analyzeVariableScopes(document);
-        const references = analysis.references.map((reference) => ({
+        const references = analysis.references.filter((reference) => reference.name.startsWith("$")).map((reference) => ({
             name: reference.name,
             line: reference.range.start.line,
             resolvedTo: reference.declaration?.name,
@@ -63,6 +64,35 @@ describe("JSONiq variable scope analysis", () => {
             { name: "$x", line: 3, resolvedTo: "$x", resolvedKind: "parameter" },
             { name: "$x", line: 5, resolvedTo: "$x", resolvedKind: "declare-variable" },
         ]);
+    });
+
+    it("resolves function call references by name", () => {
+        const document = TextDocument.create(
+            "file:///scope-function-references.jq",
+            "jsoniq",
+            1,
+            [
+                "declare function local:add($left, $right) {",
+                "  $left + $right",
+                "};",
+                "local:add(1, 2)",
+            ].join("\n"),
+        );
+
+        const analysis = analyzeVariableScopes(document);
+        const functionReference = analysis.references.find((reference) => reference.name === "local:add");
+
+        expect(functionReference).toMatchObject({
+            name: "local:add",
+            range: {
+                start: { line: 3, character: 0 },
+                end: { line: 3, character: "local:add".length },
+            },
+            declaration: {
+                name: "local:add",
+                kind: "function",
+            },
+        });
     });
 
     it("supports multiple for variables in the same clause", () => {

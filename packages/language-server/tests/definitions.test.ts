@@ -65,6 +65,26 @@ describe("JSONiq go-to-definition", () => {
         expect(location?.range.start.line).toBe(0);
     });
 
+    it("resolves function call to function declaration", () => {
+        const document = TextDocument.create(
+            "file:///definitions-function-call.jq",
+            "jsoniq",
+            1,
+            [
+                "declare function local:f($x) {",
+                "  $x",
+                "};",
+                "local:f(1)",
+            ].join("\n"),
+        );
+
+        const location = findDefinitionLocation(document, { line: 3, character: 2 });
+
+        expect(location).toBeDefined();
+        expect(location?.range.start).toEqual({ line: 0, character: "declare function ".length });
+        expect(location?.range.end).toEqual({ line: 0, character: "declare function local:f".length });
+    });
+
     it("returns null when position is not on a resolvable variable", () => {
         const document = TextDocument.create(
             "file:///definitions-null.jq",

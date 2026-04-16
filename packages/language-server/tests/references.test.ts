@@ -50,9 +50,25 @@ describe("JSONiq references", () => {
         const source = "declare function local:f($x) { $x };";
         const document = TextDocument.create("file:///references-miss.jq", "jsoniq", 1, source);
 
-        const locations = findReferenceLocations(document, positionAt(document, "local:f"), true);
+        const locations = findReferenceLocations(document, positionAt(document, "declare"), true);
 
         expect(locations).toEqual([]);
+    });
+
+    it("finds references for a function from its declaration", () => {
+        const source = [
+            "declare function local:f($x) { $x };",
+            "local:f(1) + local:f(2)",
+        ].join("\n");
+        const document = TextDocument.create("file:///references-function.jq", "jsoniq", 1, source);
+
+        const locations = findReferenceLocations(document, positionAt(document, "local:f"), true);
+
+        expect(locations.map((location) => location.range.start)).toEqual([
+            { line: 0, character: "declare function ".length },
+            { line: 1, character: 0 },
+            { line: 1, character: "local:f(1) + ".length },
+        ]);
     });
 
     it("finds references when cursor is on dollar sign of declaration", () => {
