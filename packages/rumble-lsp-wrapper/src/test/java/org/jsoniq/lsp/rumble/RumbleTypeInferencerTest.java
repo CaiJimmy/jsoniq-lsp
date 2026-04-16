@@ -3,6 +3,8 @@ package org.jsoniq.lsp.rumble;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -68,5 +70,30 @@ class RumbleTypeInferencerTest {
         assertNotNull(result.error());
         assertTrue(result.variableTypes().isEmpty());
         assertTrue(result.functionTypes().isEmpty());
+    }
+
+    @Test
+    void inferLetShadowingCollectsBothVariableTypes() {
+        String query = """
+                let $x := 1
+                return (
+                  let $x := "shadow"
+                  return $x
+                )
+                """;
+
+        RumbleTypeInferencer.InferenceResult result = this.inferencer.infer(query);
+
+        assertNull(result.error());
+
+        Set<String> xTypes = result.variableTypes()
+                .stream()
+                .filter(type -> "LetVariableDeclaration".equals(type.nodeKind()))
+                .filter(type -> "x".equals(type.name()))
+                .map(RumbleTypeInferencer.VariableType::type)
+                .collect(Collectors.toSet());
+
+        assertTrue(xTypes.contains("xs:integer"));
+        assertTrue(xTypes.contains("xs:string"));
     }
 }
