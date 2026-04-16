@@ -16,8 +16,10 @@ import {
     VarRefContext,
 } from "../grammar/jsoniqParser.js";
 import { parseJsoniqDocument } from "./parser.js";
+import { upperBound } from "./utils/binary-search.js";
 import { rangeFromNode } from "./utils/range.js";
 import { isNewScopeNode } from "./utils/scope.js";
+import { comparePositions } from "./utils/position.js";
 
 type DefinitionKind =
     | "declare-variable"
@@ -312,7 +314,7 @@ export function getVisibleDeclarationsAtPosition(document: TextDocument, positio
     // Index = first declaration with declaration start > position, so we start scanning backward from index - 1 to find declarations that are declared before the position.
     // Between [0, index - 1], we need to check if scopeEnd is before the position to ensure the declaration is still valid
     // TODO: Find a better way to efficiently find the visible declarations at a given position without having to scan backward through all declarations before that position.
-    let index = upperBoundDeclarationPosition(analysis.definitions, position) - 1;
+    let index = upperBound(analysis.definitions, position, (left, right) => comparePositions(left.range.start, right)) - 1;
 
     while (index >= 0) {
         const declaration = analysis.definitions[index];
@@ -334,31 +336,6 @@ export function getVisibleDeclarationsAtPosition(document: TextDocument, positio
     }
 
     return [...visibleByName.values()];
-}
-
-/**
- * Find the index of the first declaration whose declaration start position is greater than the given position, using binary search.
- * 
- * @returns The index of the first declaration whose declaration start position is **greater** than the given position, or declarations.length if there is no such declaration.
-*/
-function upperBoundDeclarationPosition(definitions: Definition[], position: Position): number {
-    let low = 0;
-    let high = definitions.length;
-
-    while (low < high) {
-        const mid = Math.floor((low + high) / 2);
-
-        // Because mid is between 0 and definitions.length - 1, it should always be defined
-        const definition = definitions[mid]!;
-
-        if (comparePositions(definition.range.start, position) <= 0) {
-            low = mid + 1;
-        } else {
-            high = mid;
-        }
-    }
-
-    return low;
 }
 
 /**
@@ -388,13 +365,6 @@ function createVariableDeclaration(
     };
 }
 
-function comparePositions(left: Position, right: Position): number {
-    if (left.line !== right.line) {
-        return left.line - right.line;
-    }
-
-    return left.character - right.character;
-}
 
 /**
  * Finds the variable occurrence (declaration or reference) at the given position in the document, and returns the corresponding declaration and reference information.
@@ -407,28 +377,12 @@ export function findVariableOccurrenceAtPosition(
     analysis: JsoniqAnalysis,
     position: Position,
 ): OccurrenceIndexEntry | undefined {
-    const { occurrenceIndex } = analysis;
-    let low = 0;
-    let high = occurrenceIndex.length - 1;
+    const occurrenceIndex = upperBound(analysis.occurrenceIndex, position,
+        (occurrence, position) => comparePositions(occurrence.range.start, position)
+    ) - 1;
+    const occurrence = analysis.occurrenceIndex[occurrenceIndex];
 
-    while (low <= high) {
-        const mid = Math.floor((low + high) / 2);
-        const occurrence = occurrenceIndex[mid];
-
-        if (occurrence === undefined) {
-            break;
-        }
-
-        if (comparePositions(position, occurrence.range.start) < 0) {
-            high = mid - 1;
-            continue;
-        }
-
-        if (comparePositions(position, occurrence.range.end) >= 0) {
-            low = mid + 1;
-            continue;
-        }
-
+    if (occurrence !== undefined && comparePositions(position, occurrence.range.end) < 0) {
         return occurrence;
     }
 
