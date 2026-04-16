@@ -25,6 +25,13 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
