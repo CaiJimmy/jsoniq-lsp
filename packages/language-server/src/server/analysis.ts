@@ -506,6 +506,8 @@ function sanitizeSymbolName(name: string): string | null {
 export function getVisibleDeclarationsAtPosition(document: TextDocument, position: Position): Definition[] {
     const analysis = getAnalysis(document);
     const visibleByName = new Map<string, Definition>();
+    const source = document.getText();
+    const positionOffset = document.offsetAt(position);
 
     // Index = first declaration with declaration start > position, so we start scanning backward from index - 1 to find declarations that are declared before the position.
     // Between [0, index - 1], we need to check if scopeEnd is before the position to ensure the declaration is still valid
@@ -514,14 +516,12 @@ export function getVisibleDeclarationsAtPosition(document: TextDocument, positio
 
     while (index >= 0) {
         const declaration = analysis.definitions[index];
-        const declarationVisibleFrom = declaration?.kind === "function" ? declaration.selectionRange.end : declaration?.range.end;
 
         // A declaration is visible iff the cursor is before the scope boundary. Because we scan
         // backward, the first declaration we keep for a name is the nearest (shadowing-aware).
         if (
             declaration !== undefined
-            && declarationVisibleFrom !== undefined
-            && comparePositions(declarationVisibleFrom, position) < 0
+            && isDeclarationVisibleAtOffset(document, source, declaration, positionOffset)
             && comparePositions(position, declaration.scopeEnd) <= 0
             && !visibleByName.has(declaration.name)
         ) {
@@ -532,6 +532,22 @@ export function getVisibleDeclarationsAtPosition(document: TextDocument, positio
     }
 
     return [...visibleByName.values()];
+}
+
+function isDeclarationVisibleAtOffset(
+    document: TextDocument,
+    source: string,
+    declaration: Definition,
+    queryOffset: number,
+): boolean {
+    if (declaration.kind === "function") {
+        return document.offsetAt(declaration.selectionRange.end) < queryOffset;
+    }
+
+    const declarationEndOffset = document.offsetAt(declaration.range.end);
+
+    return declarationEndOffset < queryOffset
+        && source.slice(declarationEndOffset, queryOffset).trim() !== "";
 }
 
 /**

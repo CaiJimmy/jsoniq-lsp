@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { analyzeVariableScopes, findVariableOccurrenceAtPosition } from "../src/server/analysis.js";
+import {
+    analyzeVariableScopes,
+    findVariableOccurrenceAtPosition,
+    getVisibleDeclarationsAtPosition,
+} from "../src/server/analysis.js";
 
 describe("JSONiq variable scope analysis", () => {
     it("collects variable declarations from function params and FLWOR clauses", () => {
@@ -249,5 +253,29 @@ describe("JSONiq variable scope analysis", () => {
             { line: 1, declarationLine: 0 },        /// The $x in the second line refers to the first declaration of $x
             { line: 2, declarationLine: 1 },        /// The $x in the third line refers to the second declaration of $x, which shadows the first one
         ]);
+    });
+
+    it("does not make an incomplete variable declaration visible from trailing initializer whitespace", () => {
+        const source = "declare variable $a := ";
+        const document = TextDocument.create("file:///scope-incomplete-var-init.jq", "jsoniq", 1, source);
+
+        const visibleDeclarations = getVisibleDeclarationsAtPosition(document, {
+            line: 0,
+            character: source.length,
+        });
+
+        expect(visibleDeclarations.map((declaration) => declaration.name)).not.toContain("$a");
+    });
+
+    it("makes a completed prolog variable visible after its semicolon", () => {
+        const source = "declare variable $a := 1; ";
+        const document = TextDocument.create("file:///scope-complete-var-init.jq", "jsoniq", 1, source);
+
+        const visibleDeclarations = getVisibleDeclarationsAtPosition(document, {
+            line: 0,
+            character: source.length,
+        });
+
+        expect(visibleDeclarations.map((declaration) => declaration.name)).toContain("$a");
     });
 });
