@@ -35,11 +35,7 @@ function createParser(source: string): { lexer: jsoniqLexer; parser: jsoniqParse
     return { lexer, parser, tokenStream };
 }
 
-/**
- * This is the result of collecting the expected syntax at a given position,
- * which includes the set of expected tokens and the rule stack at that position.
- */
-export interface JsoniqCompletionContext {
+interface JsoniqSyntaxContext {
     /**
      * List of token types that are expected at the position where code completion is invoked.
      */
@@ -51,17 +47,20 @@ export interface JsoniqCompletionContext {
      */
     ruleStack: string[];
 
-    /**
-     * The offset in the document where this completion context was captured.
-     * We use offset here instead of Position because later, when querying 
-     */
     offset: number;
+}
 
+export interface JsoniqCompletionContext extends JsoniqSyntaxContext {
+    /**
+     * The offset of the caret token for which this completion context was captured.
+     * This may differ from the `offset` property if the caret is on trailing whitespace or EOF, where the closest token for context collection can be just before or after the caret.
+     */
+    caretOffset: number;
 }
 
 export interface JsoniqParseResult {
     diagnostics: Diagnostic[];
-    completionContexts: JsoniqCompletionContext[];
+    completionContexts: JsoniqSyntaxContext[];
     tree: ModuleAndThisIsItContext;
 }
 /**
@@ -69,7 +68,7 @@ export interface JsoniqParseResult {
  */
 class JsoniqErrorListener extends BaseErrorListener {
     public readonly diagnostics: Diagnostic[] = [];
-    public readonly contexts: JsoniqCompletionContext[] = [];
+    public readonly contexts: JsoniqSyntaxContext[] = [];
 
     public constructor(private readonly document: TextDocument) {
         super();
@@ -87,8 +86,9 @@ class JsoniqErrorListener extends BaseErrorListener {
 
         if (recognizer instanceof jsoniqParser) {
             try {
+                const offset = this.document.offsetAt(range.start);
                 this.contexts.push({
-                    offset: this.document.offsetAt(range.start),
+                    offset,
                     tokens: recognizer.getExpectedTokens(),
                     ruleStack: recognizer.getRuleInvocationStack(),
                 });
@@ -145,7 +145,7 @@ function buildCachedParse(document: TextDocument): CachedParse {
     const tree = parser.moduleAndThisIsIt();
 
     tokenStream.fill();
-    const tokens = tokenStream.getTokens();
+    const tokens = tokenStream.getTokens()
 
     return {
         version: document.version,
@@ -184,11 +184,6 @@ export function parseJsoniqDocument(document: TextDocument): JsoniqParseResult {
 }
 
 /**
- * Default rule stack to use when the expected syntax cannot be determined from the input prefix.
- */
-const TOP_LEVEL_RULE_STACK = ["prolog", "mainModule", "module", "moduleAndThisIsIt"];
-
-/**
  * Collects the expected syntax at a given position in the document for code completion purposes.
  * @param document The JSONiq document for which to collect completion context
  * @param cursorOffset The offset in the document where code completion is invoked
@@ -196,21 +191,31 @@ const TOP_LEVEL_RULE_STACK = ["prolog", "mainModule", "module", "moduleAndThisIs
  */
 export function collectCompletionContext(document: TextDocument, cursorOffset: number): JsoniqCompletionContext | null {
     const cached = getCachedParse(document);
-    const caretTokenIndex = findCaretTokenIndex(cached.tokens, cursorOffset);
-    const tokenTypes = getCompletionTokenTypes(cached.parser, caretTokenIndex);
+    const caret = findCaretToken(cached.tokens, cursorOffset);
+    const tokenTypes = getCompletionTokenTypes(cached.parser, caret.tokenIndex);
     const context = closestCompletionContext(cached.result.completionContexts, cursorOffset);
-    const ruleStack = context?.ruleStack ?? TOP_LEVEL_RULE_STACK;
+    const ruleStack = context?.ruleStack ?? [];
 
     if (tokenTypes.length === 0) {
         // C3 can fail to determine expected tokens in certain cases
         // In that case, we fallback to using the context from the closest syntax error
-        return context ?? null;
+        if (context === null) {
+            return null;
+        }
+
+        return {
+            tokens: context.tokens,
+            ruleStack: context.ruleStack,
+            offset: context.offset,
+            caretOffset: caret.offset,
+        };
     }
 
     return {
         tokens: new IntervalSet([...tokenTypes]),
         ruleStack,
         offset: context?.offset ?? cursorOffset,
+        caretOffset: caret.offset,
     };
 }
 
@@ -221,36 +226,28 @@ export function collectCompletionContext(document: TextDocument, cursorOffset: n
  * @returns The completion context that is closest to the given cursor offset, or null if no contexts are available
  */
 function closestCompletionContext(
-    contexts: JsoniqCompletionContext[],
+    contexts: JsoniqSyntaxContext[],
     cursorOffset: number,
-): JsoniqCompletionContext | null {
+): JsoniqSyntaxContext | null {
     if (contexts.length === 0) {
         return null;
     }
 
     // Find the closest context to the cursor offset using binary search, since contexts are collected in order of occurrence in the document.
     const insertionPoint = lowerBound(contexts, cursorOffset, (context, target) => context.offset - target);
-    const candidates: JsoniqCompletionContext[] = [];
+    const before = contexts[insertionPoint - 1];
+    const after = contexts[insertionPoint];
 
-    if (insertionPoint > 0) {
-        candidates.push(contexts[insertionPoint - 1]!);
+    if (before === undefined) {
+        return after!;
     }
-    if (insertionPoint < contexts.length) {
-        candidates.push(contexts[insertionPoint]!);
-    }
-
-    let closest = candidates[0]!;
-    for (let i = 1; i < candidates.length; i++) {
-        if (Math.abs(candidates[i]!.offset - cursorOffset) < Math.abs(closest.offset - cursorOffset)) {
-            closest = candidates[i]!;
-        }
+    if (after === undefined) {
+        return before;
     }
 
-    return {
-        tokens: closest.tokens,
-        ruleStack: closest.ruleStack,
-        offset: closest.offset,
-    };
+    return Math.abs(before.offset - cursorOffset) <= Math.abs(after.offset - cursorOffset)
+        ? before
+        : after;
 }
 
 /**
@@ -268,36 +265,36 @@ function getCompletionTokenTypes(parser: jsoniqParser, caretTokenIndex: number):
     return [...candidates.tokens.keys()].filter((tokenType) => tokenType !== Token.EOF);
 }
 
-/**
- * Find the index of the token at the caret position, or the nearest token if the caret is between tokens. 
- * Uses binary search since tokens are sorted by their start offset.
- * @param tokens The array of tokens in the document
- * @param cursorOffset The offset in the document where code completion is invoked
- * @returns The index of the token at the caret position or the nearest token
- */
-function findCaretTokenIndex(tokens: Token[], cursorOffset: number): number {
+function findCaretToken(tokens: Token[], cursorOffset: number): { tokenIndex: number; offset: number } {
     if (tokens.length === 0) {
-        return 0;
+        return { tokenIndex: 0, offset: cursorOffset };
     }
 
-    // Binary search to find the insertion point for cursorOffset in the token.start sequence
     const insertionPoint = lowerBound(tokens, cursorOffset, (token, target) => token.start - target);
+    let tokenIndex = tokens[tokens.length - 1]!.tokenIndex;
 
-    // Check if the token before the insertion point contains the cursor
     if (insertionPoint > 0) {
         const token = tokens[insertionPoint - 1]!;
         if (token.type !== Token.EOF && token.start <= cursorOffset && cursorOffset <= token.stop + 1) {
-            return token.tokenIndex;
+            tokenIndex = token.tokenIndex;
+        } else if (insertionPoint < tokens.length) {
+            tokenIndex = tokens[insertionPoint]!.tokenIndex;
+        }
+    } else if (insertionPoint < tokens.length) {
+        tokenIndex = tokens[insertionPoint]!.tokenIndex;
+    }
+
+    for (let index = tokenIndex; index >= 0; index -= 1) {
+        const token = tokens[index]!;
+        if (token.type !== Token.EOF && (token.channel ?? Token.DEFAULT_CHANNEL) === Token.DEFAULT_CHANNEL) {
+            return {
+                tokenIndex,
+                offset: Math.min(cursorOffset, token.stop + 1),
+            };
         }
     }
 
-    // Otherwise, return the token at or after the insertion point
-    if (insertionPoint < tokens.length) {
-        return tokens[insertionPoint]!.tokenIndex;
-    }
-
-    // Cursor is after all tokens; return the last token
-    return tokens[tokens.length - 1]!.tokenIndex;
+    return { tokenIndex, offset: cursorOffset };
 }
 
 /**
