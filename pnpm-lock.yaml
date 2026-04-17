@@ -13,6 +13,9 @@ importers:
       antlr-ng:
         specifier: ^1.0.10
         version: 1.0.10
+      antlr4-c3:
+        specifier: ^3.4.4
+        version: 3.4.4
       antlr4ng:
         specifier: ^3.0.16
         version: 3.0.16
@@ -223,6 +226,9 @@ packages:
   antlr-ng@1.0.10:
     resolution: {integrity: sha512-fw3NdsQP3dabuZrDhKAMewrBsY5KSAcMrvhWBVDmHYegv5D51pypzCYK1PpjaRVKcVeP/5xKfqJY31TvXACOdA==}
     hasBin: true
+
+  antlr4-c3@3.4.4:
+    resolution: {integrity: sha512-ixp1i17ypbRzZnffdarIfCVEXJwPydtDt61SHMGkc+UCD7rrbfvHESTMTgx8jFhUgKAgcHyt9060kQ8nU3vlxA==}
 
   antlr4ng@3.0.15:
     resolution: {integrity: sha512-VELFqTfcpGI2bj6ScMWuxM3FI6HOsojrgmnw3cCbUtsQ1DNOq32wJsjOt7vLvfIniyyuE1DIYegGcuFmn+jgyw==}
@@ -720,6 +726,10 @@ snapshots:
       commander: 13.1.0
       stringtemplate4ts: 1.0.9
       unicode-properties: 1.4.1
+
+  antlr4-c3@3.4.4:
+    dependencies:
+      antlr4ng: 3.0.16
 
   antlr4ng@3.0.15: {}
 
