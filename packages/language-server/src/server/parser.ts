@@ -39,7 +39,7 @@ interface JsoniqSyntaxContext {
     /**
      * List of token types that are expected at the position where code completion is invoked.
      */
-    tokens: IntervalSet;
+    expectedTokenSet: IntervalSet;
 
     /**
      * The stack of parser rules that are active at the position where code completion is invoked, with the most recently entered rule first.
@@ -89,7 +89,7 @@ class JsoniqErrorListener extends BaseErrorListener {
                 const offset = this.document.offsetAt(range.start);
                 this.contexts.push({
                     offset,
-                    tokens: recognizer.getExpectedTokens(),
+                    expectedTokenSet: recognizer.getExpectedTokens(),
                     ruleStack: recognizer.getRuleInvocationStack(),
                 });
             } catch {
@@ -204,7 +204,7 @@ export function collectCompletionContext(document: TextDocument, cursorOffset: n
         }
 
         return {
-            tokens: context.tokens,
+            expectedTokenSet: context.expectedTokenSet,
             ruleStack: context.ruleStack,
             offset: context.offset,
             caretOffset: caret.offset,
@@ -212,7 +212,7 @@ export function collectCompletionContext(document: TextDocument, cursorOffset: n
     }
 
     return {
-        tokens: new IntervalSet([...tokenTypes]),
+        expectedTokenSet: new IntervalSet([...tokenTypes]),
         ruleStack,
         offset: context?.offset ?? cursorOffset,
         caretOffset: caret.offset,
