@@ -9,7 +9,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { parseJsoniqDocument } from "./parser.js";
-import { collectSemanticDiagnostics } from "./semantic.js";
+import { collectSemanticDiagnostics, collectSemanticTokens, legend as semanticLegend } from "./semantic.js";
 import { collectDocumentSymbols } from "./symbols.js";
 import { findDefinitionLocation } from "./definitions.js";
 import { findReferenceLocations } from "./references.js";
@@ -57,6 +57,10 @@ connection.onInitialize(async (_params: InitializeParams): Promise<InitializeRes
             },
             renameProvider: {
                 prepareProvider: true,
+            },
+            semanticTokensProvider: {
+                legend: semanticLegend,
+                full: true,
             },
         },
         serverInfo: {
@@ -134,6 +138,16 @@ connection.onCompletion((params) => {
     }
 
     return findCompletions(document, params.position);
+});
+
+connection.languages.semanticTokens.on((params) => {
+    const document = documents.get(params.textDocument.uri);
+
+    if (document === undefined) {
+        return { data: [] };
+    }
+
+    return collectSemanticTokens(document);
 });
 
 documents.onDidOpen(async (event) => {
