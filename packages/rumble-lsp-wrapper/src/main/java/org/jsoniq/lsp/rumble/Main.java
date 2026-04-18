@@ -12,13 +12,13 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 
-public class RumbleTypeInferencerMain {
+public class Main {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final RumbleTypeInferencer INFERENCER = new RumbleTypeInferencer();
+    private static final TypeInferencer INFERENCER = new TypeInferencer();
 
     private record WrapperResponse(
-            List<RumbleTypeInferencer.VariableType> variableTypes,
-            List<RumbleTypeInferencer.FunctionType> functionTypes,
+            List<TypeInferencer.VariableType> variableTypes,
+            List<TypeInferencer.FunctionType> functionTypes,
             String error) {
     }
 
@@ -27,8 +27,8 @@ public class RumbleTypeInferencerMain {
 
     private record WrapperDaemonResponse(
             long id,
-            List<RumbleTypeInferencer.VariableType> variableTypes,
-            List<RumbleTypeInferencer.FunctionType> functionTypes,
+            List<TypeInferencer.VariableType> variableTypes,
+            List<TypeInferencer.FunctionType> functionTypes,
             String error) {
     }
 
@@ -40,7 +40,7 @@ public class RumbleTypeInferencerMain {
 
         try {
             String query = readAllStdin();
-            RumbleTypeInferencer.InferenceResult result = INFERENCER.infer(query);
+            TypeInferencer.InferenceResult result = INFERENCER.infer(query);
             writeAndExit(new WrapperResponse(result.variableTypes(), result.functionTypes(), result.error()), 0);
         } catch (Throwable throwable) {
             String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
@@ -86,7 +86,7 @@ public class RumbleTypeInferencerMain {
             }
             byte[] decodedBytes = Base64.getDecoder().decode(request.queryBase64());
             String query = new String(decodedBytes, StandardCharsets.UTF_8);
-            RumbleTypeInferencer.InferenceResult result = INFERENCER.infer(query);
+            TypeInferencer.InferenceResult result = INFERENCER.infer(query);
             return new WrapperDaemonResponse(requestId, result.variableTypes(), result.functionTypes(), result.error());
         } catch (Throwable throwable) {
             String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());

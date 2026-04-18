@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public final class RumbleTypeInferencer {
+public final class TypeInferencer {
     private static final Comparator<VariableType> VARIABLE_TYPE_POSITION_COMPARATOR = Comparator
             .comparingInt(VariableType::line)
             .thenComparingInt(VariableType::column);
@@ -73,11 +73,11 @@ public final class RumbleTypeInferencer {
 
     private final RumbleRuntimeConfiguration configuration;
 
-    public RumbleTypeInferencer() {
+    public TypeInferencer() {
         this(new String[] {});
     }
 
-    public RumbleTypeInferencer(String[] args) {
+    public TypeInferencer(String[] args) {
         this.configuration = new RumbleRuntimeConfiguration(args);
     }
 

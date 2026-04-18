@@ -12,13 +12,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class RumbleTypeInferencerTest {
+class TypeInferencerTest {
 
-    private final RumbleTypeInferencer inferencer = new RumbleTypeInferencer();
+    private final TypeInferencer inferencer = new TypeInferencer();
 
     @Test
     void inferEmptyQueryReturnsNoErrorAndNoTypes() {
-        RumbleTypeInferencer.InferenceResult result = this.inferencer.infer("");
+        TypeInferencer.InferenceResult result = this.inferencer.infer("");
 
         assertNull(result.error());
         assertTrue(result.variableTypes().isEmpty());
@@ -29,11 +29,11 @@ class RumbleTypeInferencerTest {
     void inferSimpleLetCollectsVariableType() {
         String query = "let $x := 1 return $x";
 
-        RumbleTypeInferencer.InferenceResult result = this.inferencer.infer(query);
+        TypeInferencer.InferenceResult result = this.inferencer.infer(query);
 
         assertNull(result.error());
 
-        Optional<RumbleTypeInferencer.VariableType> letVariableType = result.variableTypes()
+        Optional<TypeInferencer.VariableType> letVariableType = result.variableTypes()
                 .stream()
                 .filter(type -> "LetVariableDeclaration".equals(type.nodeKind()))
                 .filter(type -> "x".equals(type.name()))
@@ -47,12 +47,12 @@ class RumbleTypeInferencerTest {
     void inferFunctionDeclarationCollectsFunctionTypeAndParameters() {
         String query = "declare function local:f($a as integer, $b) { $a + 1 };";
 
-        RumbleTypeInferencer.InferenceResult result = this.inferencer.infer(query);
+        TypeInferencer.InferenceResult result = this.inferencer.infer(query);
 
         assertNull(result.error());
         assertFalse(result.functionTypes().isEmpty());
 
-        Optional<RumbleTypeInferencer.FunctionType> functionType = result.functionTypes()
+        Optional<TypeInferencer.FunctionType> functionType = result.functionTypes()
                 .stream()
                 .filter(type -> "local:f".equals(type.name()))
                 .findFirst();
@@ -65,7 +65,7 @@ class RumbleTypeInferencerTest {
 
     @Test
     void inferInvalidQueryReturnsError() {
-        RumbleTypeInferencer.InferenceResult result = this.inferencer.infer("let $x := return");
+        TypeInferencer.InferenceResult result = this.inferencer.infer("let $x := return");
 
         assertNotNull(result.error());
         assertTrue(result.variableTypes().isEmpty());
@@ -82,7 +82,7 @@ class RumbleTypeInferencerTest {
                 )
                 """;
 
-        RumbleTypeInferencer.InferenceResult result = this.inferencer.infer(query);
+        TypeInferencer.InferenceResult result = this.inferencer.infer(query);
 
         assertNull(result.error());
 
@@ -90,7 +90,7 @@ class RumbleTypeInferencerTest {
                 .stream()
                 .filter(type -> "LetVariableDeclaration".equals(type.nodeKind()))
                 .filter(type -> "x".equals(type.name()))
-                .map(RumbleTypeInferencer.VariableType::type)
+                .map(TypeInferencer.VariableType::type)
                 .collect(Collectors.toSet());
 
         assertTrue(xTypes.contains("xs:integer"));
