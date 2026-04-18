@@ -19,19 +19,61 @@ export interface WrapperFunctionType {
     returnType: string;
 }
 
-interface WrapperDaemonRequest {
-    id: number;
-    queryBase64: string;
+export interface WrapperBuiltinFunctionSignature {
+    parameterTypes: string[];
+    returnType: string;
 }
 
-export interface WrapperDaemonResponse {
+type WrapperRequestType = "inferTypes" | "builtinFunctions";
+
+type RequestPayloadByType = {
+    inferTypes: {
+        requestType: "inferTypes";
+        body: string;
+    };
+    builtinFunctions: {
+        requestType: "builtinFunctions";
+    };
+};
+
+type ResponseByType = {
+    inferTypes: QueryResponse;
+    builtinFunctions: BuiltInFunctionListResponse;
+};
+
+interface WrapperDaemonRequest {
     id: number;
+    requestType: WrapperRequestType;
+    body?: string;
+}
+
+export interface QueryResponseBody {
     variableTypes: WrapperVariableType[];
     functionTypes: WrapperFunctionType[];
+}
+
+export interface BuiltInFunctionListResponseBody {
+    builtinFunctions: Record<string, WrapperBuiltinFunctionSignature>;
+}
+
+type ResponseBodyByType = {
+    inferTypes: QueryResponseBody;
+    builtinFunctions: BuiltInFunctionListResponseBody;
+};
+
+export interface WrapperDaemonResponse<ResponseType extends WrapperRequestType = WrapperRequestType> {
+    id: number;
+    responseType: ResponseType;
+    body: ResponseBodyByType[ResponseType];
     error: string | null;
 }
 
+export type QueryResponse = WrapperDaemonResponse<"inferTypes">;
+export type BuiltInFunctionListResponse = WrapperDaemonResponse<"builtinFunctions">;
+
 interface PendingRequest {
+    expectedResponseType: WrapperRequestType;
+    fallbackResponse: WrapperDaemonResponse;
     resolve: (response: WrapperDaemonResponse) => void;
     reject: (error: Error) => void;
     timeout: NodeJS.Timeout;
@@ -47,32 +89,71 @@ export class RumbleWrapperConnection {
     private stdoutBuffer = "";
     private readonly pending = new Map<number, PendingRequest>();
 
-    public async inferTypes(query: string): Promise<WrapperDaemonResponse> {
+    public async inferTypes(query: string): Promise<QueryResponse> {
+        const body = Buffer.from(query, "utf8").toString("base64");
+        return this.sendRequest<"inferTypes">({
+            requestType: "inferTypes",
+            body,
+        }, {
+            id: -1,
+            responseType: "inferTypes",
+            body: {
+                variableTypes: [],
+                functionTypes: [],
+            },
+            error: "Wrapper request failed.",
+        });
+    }
+
+    public async listBuiltinFunctions(): Promise<BuiltInFunctionListResponse> {
+        return this.sendRequest<"builtinFunctions">({
+            requestType: "builtinFunctions",
+        }, {
+            id: -1,
+            responseType: "builtinFunctions",
+            body: {
+                builtinFunctions: {},
+            },
+            error: "Wrapper request failed.",
+        });
+    }
+
+    private async sendRequest<RequestType extends WrapperRequestType>(
+        requestPayload: RequestPayloadByType[RequestType],
+        fallbackResponse: ResponseByType[RequestType],
+    ): Promise<ResponseByType[RequestType]> {
         this.ensureProcess();
         const id = this.nextRequestId;
         this.nextRequestId += 1;
 
-        const queryBase64 = Buffer.from(query, "utf8").toString("base64");
-        const request: WrapperDaemonRequest = { id, queryBase64 };
+        const request: WrapperDaemonRequest = {
+            id,
+            ...requestPayload,
+        };
         const encodedRequest = JSON.stringify(request);
         const child = this.child;
 
         if (child === undefined) {
             return {
+                ...fallbackResponse,
                 id,
-                variableTypes: [],
-                functionTypes: [],
                 error: "Wrapper process is not available.",
             };
         }
 
-        return new Promise<WrapperDaemonResponse>((resolve, reject) => {
+        return new Promise<ResponseByType[RequestType]>((resolve, reject) => {
             const timeout = setTimeout(() => {
                 this.pending.delete(id);
                 reject(new Error("Wrapper timed out."));
             }, 12_000);
 
-            this.pending.set(id, { resolve, reject, timeout });
+            this.pending.set(id, {
+                expectedResponseType: requestPayload.requestType,
+                fallbackResponse,
+                resolve: resolve as unknown as (response: WrapperDaemonResponse) => void,
+                reject,
+                timeout,
+            });
 
             child.stdin.write(`${encodedRequest}\n`, "utf8", (error) => {
                 if (error !== undefined && error !== null) {
@@ -80,11 +161,10 @@ export class RumbleWrapperConnection {
                 }
             });
         }).catch((error: unknown) => ({
+            ...fallbackResponse,
             id,
-            variableTypes: [],
-            functionTypes: [],
             error: error instanceof Error ? error.message : "Wrapper request failed.",
-        }));
+        }) as ResponseByType[RequestType]);
     }
 
     public dispose(): void {
@@ -150,11 +230,7 @@ export class RumbleWrapperConnection {
             return;
         }
 
-        if (
-            typeof response.id !== "number"
-            || !Array.isArray(response.variableTypes)
-            || !Array.isArray(response.functionTypes)
-        ) {
+        if (typeof response.id !== "number") {
             return;
         }
 
@@ -165,12 +241,15 @@ export class RumbleWrapperConnection {
 
         clearTimeout(pendingRequest.timeout);
         this.pending.delete(response.id);
-        pendingRequest.resolve({
-            id: response.id,
-            variableTypes: response.variableTypes,
-            functionTypes: response.functionTypes,
-            error: response.error ?? null,
-        });
+        if (response.responseType !== pendingRequest.expectedResponseType) {
+            pendingRequest.resolve({
+                ...pendingRequest.fallbackResponse,
+                id: response.id,
+                error: `Wrapper returned responseType '${response.responseType}' for requestType '${pendingRequest.expectedResponseType}'.`,
+            });
+            return;
+        }
+        pendingRequest.resolve(response);
     }
 
     private rejectPending(id: number, error: Error): void {
@@ -225,7 +304,7 @@ function resolveWrapperLaunchConfig(): WrapperLaunchConfig {
         args: [
             "-cp",
             completeClasspath,
-            "org.jsoniq.lsp.rumble.RumbleTypeInferencerMain",
+            "org.jsoniq.lsp.rumble.Main",
             "--daemon",
         ],
     };

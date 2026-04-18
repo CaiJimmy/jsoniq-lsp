@@ -59,7 +59,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>org.jsoniq.lsp.rumble.RumbleTypeWrapperMain</mainClass>
+                            <mainClass>org.jsoniq.lsp.rumble.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

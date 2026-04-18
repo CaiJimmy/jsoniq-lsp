@@ -24,13 +24,15 @@ describe("RumbleWrapperConnection (integration)", () => {
         const response = await connection.inferTypes(query);
 
         expect(response.error).toBeNull();
+        expect(response.responseType).toBe("inferTypes");
+        expect("builtinFunctions" in response.body).toBe(false);
 
-        const letType = response.variableTypes.find(
+        const letType = response.body.variableTypes.find(
             (type) => type.nodeKind === "LetVariableDeclaration" && type.name === "x",
         );
         expect(letType?.type).toBe("xs:integer");
 
-        const functionType = response.functionTypes.find((type) => type.name === "local:f");
+        const functionType = response.body.functionTypes.find((type) => type.name === "local:f");
         expect(functionType).toBeDefined();
         expect(functionType?.parameterTypes["$a"]).toBe("xs:integer");
         expect(functionType?.parameterTypes["$b"]).toBe("item*");
@@ -42,8 +44,28 @@ describe("RumbleWrapperConnection (integration)", () => {
 
         const response = await connection.inferTypes("let $x := return");
 
+        expect(response.responseType).toBe("inferTypes");
         expect(response.error).toBeTypeOf("string");
-        expect(response.variableTypes).toEqual([]);
-        expect(response.functionTypes).toEqual([]);
+        expect(response.body.variableTypes).toEqual([]);
+        expect(response.body.functionTypes).toEqual([]);
+        expect("builtinFunctions" in response.body).toBe(false);
+    }, 60_000);
+
+    it("returns builtin function signatures", async () => {
+        connection = new RumbleWrapperConnection();
+
+        const response = await connection.listBuiltinFunctions();
+
+        expect(response.responseType).toBe("builtinFunctions");
+        expect(response.error).toBeNull();
+        expect("variableTypes" in response.body).toBe(false);
+        expect("functionTypes" in response.body).toBe(false);
+        const entries = Object.entries(response.body.builtinFunctions);
+        expect(entries.length).toBeGreaterThan(0);
+
+        const count = response.body.builtinFunctions["fn:count#1"] ?? response.body.builtinFunctions["count#1"];
+
+        expect(count).toBeDefined();
+        expect(count.parameterTypes).toHaveLength(1);
     }, 60_000);
 });
