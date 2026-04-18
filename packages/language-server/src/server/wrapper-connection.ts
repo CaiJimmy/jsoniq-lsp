@@ -309,3 +309,9 @@ function resolveWrapperLaunchConfig(): WrapperLaunchConfig {
         ],
     };
 }
+
+export const connection = new RumbleWrapperConnection();
+
+process.on("exit", () => {
+    connection.dispose();
+});
