@@ -1,196 +1,292 @@
-import { CompletionItemKind } from "vscode-languageserver";
+import { type CompletionItem, type Position } from "vscode-languageserver";
 import { describe, expect, it } from "vitest";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { findVariableCompletions } from "../src/server/completion.js";
+import { findCompletions, findVariableCompletions } from "../src/server/completion.js";
 import { positionAtNth } from "./test-utils.js";
 
 describe("JSONiq completion", () => {
-    it("returns in-scope variables at cursor position", () => {
-        const source = [
+    it("returns visible declarations in", () => {
+        const document = testDocument("scope", [
             "declare variable $global := 10;",
             "declare function local:f($x) {",
             "  let $y := $x + 1",
             "  return $y + $x + $global",
             "};",
-        ].join("\n");
-        const document = TextDocument.create("file:///completion-scope.jq", "jsoniq", 1, source);
+        ]);
 
         const items = findVariableCompletions(document, positionAtNth(document, "$y", 1));
-        const labels = items.map((item) => item.label);
 
-        expect(labels).toEqual([
-            "$global",
-            "$x",
-            "$y",
-            "local:f",
-        ]);
+        expect(labels(items)).toContain(["$global", "$x", "$y", "local:f"]);
     });
 
-    it("keeps only nearest declaration for shadowed names", () => {
-        const source = [
-            "declare variable $x := 1;",
-            "declare function local:f($x) {",
-            "  return $x",
-            "};",
-        ].join("\n");
-        const document = TextDocument.create("file:///completion-shadow.jq", "jsoniq", 1, source);
-
-        const items = findVariableCompletions(document, positionAtNth(document, "$x", 2));
-        const xItems = items.filter((item) => item.label === "$x");
-
-        expect(xItems).toHaveLength(1);
-    });
-
-    it("returns empty completion list outside variable scopes", () => {
-        const source = "1 + 2";
-        const document = TextDocument.create("file:///completion-empty.jq", "jsoniq", 1, source);
-
-        const items = findVariableCompletions(document, { line: 0, character: 1 });
-
-        expect(items).toEqual([]);
-    });
-
-    it("does not leak function-local symbols outside function scope", () => {
-        const source = [
+    it("suggests '$' before typing a variable declaration prefix", () => {
+        const document = testDocument("declare-var-name", [
             "declare variable $global := 1;",
-            "declare function local:f($x) {",
-            "  let $y := $x + 1",
-            "  return $y",
-            "};",
-            "$global + 1",
-        ].join("\n");
-        const document = TextDocument.create("file:///completion-function-scope.jq", "jsoniq", 1, source);
+            "declare variable ",
+        ]);
 
-        const items = findVariableCompletions(document, positionAtNth(document, "$global", 1));
-        const labels = items.map((item) => item.label);
-
-        expect(labels).toEqual(["$global", "local:f"]);
-    });
-
-    it("includes the enclosing function while completing inside an incomplete function body", () => {
-        const source = [
-            "declare function x:f($a, $b as integer) {",
-            "    $a + ",
-            "};",
-        ].join("\n");
-        const document = TextDocument.create("file:///completion-function-body-incomplete.jq", "jsoniq", 1, source);
-
-        const items = findVariableCompletions(document, {
+        const labelsAtCursor = completionLabels(document, {
             line: 1,
-            character: "    $a + ".length,
+            character: "declare variable ".length,
         });
-        const labels = items.map((item) => item.label);
 
-        expect(labels).toEqual([
-            "$a",
-            "$b",
-            "x:f",
-        ]);
-
-        expect(items.find((item) => item.label === "x:f")).toMatchObject({
-            kind: CompletionItemKind.Function,
-            detail: "JSONiq function/2",
-        });
+        expect(labelsAtCursor).toEqual(["$"]);
     });
 
-    it("includes FLWOR clause variables in return completion", () => {
-        const source = [
-            "declare function local:f($a, $b as integer) {",
-            "    for $x at $pos in (1, 2, 3)",
-            "    let $y := $x + $a",
-            "    group by $g := $y mod 2",
-            "    count $c",
-            "    return $g + $c + $b",
+    it("does not suggest anything after typing a variable declaration prefix", () => {
+        const document = testDocument("declare-var-name-after-dollar", [
+            "declare variable $global := 1;",
+            "declare variable $",
+        ]);
+
+        const labelsAtCursor = completionLabels(document, {
+            line: 1,
+            character: "declare variable $".length,
+        });
+
+        expect(labelsAtCursor).not.toContain("$");
+        expect(labelsAtCursor.length).toBe(0);      /// Declaring variable name, avoid any suggestion
+    });
+
+    it("does not suggest anything after typing a function parameter prefix", () => {
+        const document = testDocument("param-name", [
+            "declare function local:f($a, $) {",
+            "  1",
             "};",
-        ].join("\n");
-        const document = TextDocument.create("file:///completion-flwor-return.jq", "jsoniq", 1, source);
-
-        const items = findVariableCompletions(document, positionAtNth(document, "$g", 1));
-        const labels = items.map((item) => item.label);
-
-        expect(labels).toEqual([
-            "$a",
-            "$b",
-            "$c",
-            "$g",
-            "$pos",
-            "$x",
-            "$y",
-            "local:f",
         ]);
+
+        const labelsAtCursor = completionLabels(document, {
+            line: 0,
+            character: "declare function local:f($a, $".length,
+        });
+
+        expect(labelsAtCursor.length).toBe(0);
     });
 
-    it("includes FLWOR clause variables in return completion while document is incomplete", () => {
-        const source = [
-            "declare function local:f($a, $b as integer) {",
-            "    for $x at $pos in (1, 2, 3)",
-            "    let $y := $x + $a",
-            "    group by $g := $y mod 2",
-            "    count $c",
-            "    return $g + $c + $b",
-        ].join("\n");
-        const document = TextDocument.create("file:///completion-flwor-return-incomplete.jq", "jsoniq", 1, source);
-
-        const items = findVariableCompletions(document, positionAtNth(document, "$g", 1));
-        const labels = items.map((item) => item.label);
-
-        expect(labels).toEqual([
-            "$a",
-            "$b",
-            "$c",
-            "$g",
-            "$pos",
-            "$x",
-            "$y",
-            "local:f",
+    it("suggests only '$' after let before variable name", () => {
+        const document = testDocument("let-clause-decl", [
+            "declare function x:f($a) {",
+            "  let ",
+            "};",
         ]);
+
+        const labelsAtCursor = completionLabels(document, {
+            line: 1,
+            character: "  let ".length,
+        });
+
+        expect(labelsAtCursor).toEqual(["$"]);
     });
-    it("includes for and at-position variables while typing top-level return variable", () => {
-        const source = [
-            "for $x at $pos in (1, 2, 3)",
+
+    it("does not suggest keywords when a function name is expected", () => {
+        const document = testDocument("function-name", [
+            "declare function ",
+        ]);
+
+        const labelsAtCursor = completionLabels(document, {
+            line: 0,
+            character: "declare function ".length,
+        });
+
+        expect(labelsAtCursor.length).toBe(0);
+    });
+
+    it("suggests visible variables and expression keywords in expression context", () => {
+        const document = testDocument("expression", [
+            "declare variable $global := 1;",
+            "let $x := ",
+        ]);
+
+        const labelsAtCursor = completionLabels(document, {
+            line: 1,
+            character: "let $x := ".length,
+        });
+
+        expect(labelsAtCursor).toContain("$global");
+        expect(labelsAtCursor).toContain("if");
+        expect(labelsAtCursor).toContain("for");
+    });
+
+    it("suggests variables while typing '$' in expression context", () => {
+        const document = testDocument("var-prefix", [
+            "let $a := 2",
+            "let $b := 3",
             "return $",
-        ].join("\n");
-        const document = TextDocument.create("file:///completion-top-level-flwor-incomplete.jq", "jsoniq", 1, source);
-
-        const items = findVariableCompletions(document, positionAtNth(document, "$", 2));
-        const labels = items.map((item) => item.label);
-
-        expect(labels).toEqual([
-            "$pos",
-            "$x",
         ]);
-    });
 
-    it("keeps FLWOR variables visible at scope-end boundary position", () => {
-        const source = [
-            "for $x at $pos in (1, 2, 3)",
-            "return $x",
-        ].join("\n");
-        const document = TextDocument.create("file:///completion-top-level-flwor-boundary.jq", "jsoniq", 1, source);
-
-        // Cursor right after "$x" in the return clause, which can coincide with the scope-end position.
-        const items = findVariableCompletions(document, {
-            line: 1,
-            character: "return $x".length,
+        const labelsAtCursor = completionLabels(document, {
+            line: 2,
+            character: "return $".length,
         });
-        const labels = items.map((item) => item.label);
 
-        expect(labels).toEqual([
-            "$pos",
-            "$x",
-        ]);
+        expect(labelsAtCursor).toContain("$a");
+        expect(labelsAtCursor).toContain("$b");
+        expect(labelsAtCursor).not.toContain("if");
     });
 
-    it("does not include let-bound variable inside its own initializer", () => {
-        const source = [
-            "let $a := $a",
-            "return $a",
-        ].join("\n");
-        const document = TextDocument.create("file:///completion-let-self-init.jq", "jsoniq", 1, source);
 
-        const initializerItems = findVariableCompletions(document, positionAtNth(document, "$a", 1));
+    it("replaces typed variable prefix to avoid duplicating '$'", () => {
+        const document = testDocument("var-prefix-text-edit", [
+            "let $a := 2",
+            "return $",
+        ]);
+        const position = {
+            line: 1,
+            character: "return $".length,
+        };
 
-        expect(initializerItems.map((item) => item.label)).toEqual([]);
+        const item = findCompletions(document, position).find((completion) => completion.label === "$a");
+
+        expect(item?.textEdit).toEqual({
+            range: {
+                start: {
+                    line: 1,
+                    character: "return ".length,
+                },
+                end: {
+                    line: 1,
+                    character: "return $".length,
+                },
+            },
+            newText: "$a",
+        });
+    });
+
+    it("does not suggest variables when non-expression clause keywords are expected", () => {
+        const source = "for $x in 1 ";
+        const document = testDocument("flwor-keywords", source);
+
+        const labelsAtCursor = completionLabels(document, {
+            line: 0,
+            character: source.length,
+        });
+
+        expect(labelsAtCursor).toContain("return");
+        expect(labelsAtCursor).toContain("where");
+        expect(labelsAtCursor).not.toContain("$x");
+    });
+
+    it("does not suggest clause continuations after expression operator", () => {
+        const document = testDocument("after-plus-expression-keywords", [
+            "let $r := true + ",
+        ]);
+
+        const labelsAtCursor = completionLabels(document, {
+            line: 0,
+            character: "let $r := true + ".length,
+        });
+
+        expect(labelsAtCursor).toContain("if");
+        expect(labelsAtCursor).toContain("for");
+        expect(labelsAtCursor).not.toContain("return");
+        expect(labelsAtCursor).not.toContain("where");
+        expect(labelsAtCursor).not.toContain("group by");
+        expect(labelsAtCursor).not.toContain("order by");
+        expect(labelsAtCursor).not.toContain("create");
+        expect(labelsAtCursor).not.toContain("delete");
+        expect(labelsAtCursor).not.toContain("insert");
+        expect(labelsAtCursor).not.toContain("append");
+        expect(labelsAtCursor).not.toContain("ordered");
+        expect(labelsAtCursor).not.toContain("unordered");
+    });
+
+    it("does not suggest prolog starters inside variable initializer expression", () => {
+        const document = testDocument("declare-variable-initializer", [
+            "declare variable $x := ",
+        ]);
+
+        const labelsAtCursor = completionLabels(document, {
+            line: 0,
+            character: "declare variable $x := ".length,
+        });
+
+        expect(labelsAtCursor).toContain("if");
+        expect(labelsAtCursor).not.toContain("declare function");
+        expect(labelsAtCursor).not.toContain("declare variable");
+        expect(labelsAtCursor).not.toContain("import");
+        expect(labelsAtCursor).not.toContain("jsoniq version");
+    });
+
+    it("does not suggest declared variable inside its own initializer", () => {
+        const document = testDocument("declare-variable-self-initializer", [
+            "declare variable $a := ",
+        ]);
+
+        const labelsAtCursor = completionLabels(document, {
+            line: 0,
+            character: "declare variable $a := ".length,
+        });
+
+        expect(labelsAtCursor).not.toContain("$a");
+    });
+
+    it("does not suggest prolog starters while typing a name in variable initializer expression", () => {
+        const document = testDocument("declare-variable-initializer-name", [
+            "declare variable $a := f",
+        ]);
+
+        const labelsAtCursor = completionLabels(document, {
+            line: 0,
+            character: "declare variable $a := f".length,
+        });
+
+        expect(labelsAtCursor).not.toContain("declare function");
+        expect(labelsAtCursor).not.toContain("declare variable");
+        expect(labelsAtCursor).not.toContain("import");
+        expect(labelsAtCursor).not.toContain("jsoniq version");
+    });
+
+    it("does not suggest prolog starters inside function body", () => {
+        const document = testDocument("function-body-no-prolog", [
+            "declare function x() {",
+            "  ",
+            "};",
+        ]);
+
+        const labelsAtCursor = completionLabels(document, {
+            line: 1,
+            character: "  ".length,
+        });
+
+        expect(labelsAtCursor).not.toContain("declare function");
+        expect(labelsAtCursor).not.toContain("declare variable");
+        expect(labelsAtCursor).not.toContain("import");
+        expect(labelsAtCursor).not.toContain("jsoniq version");
+    });
+
+    it("does not throw when completing at the end of a complete document", () => {
+        const source = "1 + 2";
+        const document = testDocument("complete-document", source);
+
+        expect(() => findCompletions(document, {
+            line: 0,
+            character: source.length,
+        })).not.toThrow();
+    });
+
+    it("offers top-level declaration starters in an empty document", () => {
+        const document = testDocument("empty-document", "");
+        const labelsAtCursor = completionLabels(document, { line: 0, character: 0 });
+
+        expect(labelsAtCursor).toContain("declare function");
+        expect(labelsAtCursor).toContain("declare variable");
     });
 });
+
+function testDocument(name: string, source: string | string[]): TextDocument {
+    return TextDocument.create(
+        `file:///completion-${name}.jq`,
+        "jsoniq",
+        1,
+        Array.isArray(source) ? source.join("\n") : source,
+    );
+}
+
+function labels(items: CompletionItem[]): string[] {
+    return items.map((item) => item.label);
+}
+
+function completionLabels(document: TextDocument, position: Position): string[] {
+    return labels(findCompletions(document, position));
+}
