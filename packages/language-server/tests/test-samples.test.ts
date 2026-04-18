@@ -2,9 +2,9 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
-import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { parseJsoniqDocument } from "../src/server/parser";
+import { testDocumentFromUri } from "./test-utils.js";
 
 type SampleExpectation = "valid" | "invalid";
 
@@ -23,7 +23,9 @@ async function collectSampleFiles(expectation: SampleExpectation): Promise<strin
 
 async function parseSample(filePath: string): Promise<number> {
     const source = await readFile(filePath, "utf8");
-    const document = TextDocument.create(`file://${filePath}`, "jsoniq", 1, source);
+    const document = testDocumentFromUri(source, {
+        uri: `file://${filePath}`,
+    });
 
     return parseJsoniqDocument(document).diagnostics.length;
 }

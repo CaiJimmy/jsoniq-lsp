@@ -1,6 +1,30 @@
 import { type Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
+type TestDocumentSource = string | string[];
+
+interface BaseOptions {
+    languageId?: string;
+    version?: number;
+}
+
+interface UriOptions extends BaseOptions {
+    uri: string;
+}
+
+function sourceText(source: TestDocumentSource): string {
+    return Array.isArray(source) ? source.join("\n") : source;
+}
+
+export function testDocument(name: string, source: TestDocumentSource): TextDocument {
+    return TextDocument.create(`file:///${name}.jq`, "jsoniq", 1, sourceText(source));
+}
+
+export function testDocumentFromUri(source: TestDocumentSource, options: UriOptions): TextDocument {
+    const { uri, languageId = "jsoniq", version = 1 } = options;
+    return TextDocument.create(uri, languageId, version, sourceText(source));
+}
+
 /**
  * Finds the position of the first occurrence of the given string in the document.
  * @param document The TextDocument to search within

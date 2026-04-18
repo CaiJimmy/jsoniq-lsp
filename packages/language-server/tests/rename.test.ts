@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { buildRenameWorkspaceEdit, prepareRename } from "../src/server/rename.js";
-import { positionAt, positionAtNth } from "./test-utils.js";
+import { positionAt, positionAtNth, testDocument } from "./test-utils.js";
 
 describe("JSONiq rename", () => {
     it("prepares rename over variable references and declarations", () => {
@@ -11,7 +10,7 @@ describe("JSONiq rename", () => {
             "let $y := $x + 1",
             "return $x + $y",
         ].join("\n");
-        const document = TextDocument.create("file:///rename-prepare.jq", "jsoniq", 1, source);
+        const document = testDocument("rename-prepare", source);
 
         const prepareOnReference = prepareRename(document, positionAtNth(document, "$x", 1));
         const prepareOnDeclaration = prepareRename(document, positionAtNth(document, "$x", 0));
@@ -29,7 +28,7 @@ describe("JSONiq rename", () => {
             "};",
             "local:f($x)",
         ].join("\n");
-        const document = TextDocument.create("file:///rename-shadowing.jq", "jsoniq", 1, source);
+        const document = testDocument("rename-shadowing", source);
 
         const workspaceEdit = buildRenameWorkspaceEdit(document, positionAtNth(document, "$x", 2), "$renamed");
 
@@ -46,7 +45,7 @@ describe("JSONiq rename", () => {
 
     it("rejects invalid variable names", () => {
         const source = "let $x := 1 return $x";
-        const document = TextDocument.create("file:///rename-invalid.jq", "jsoniq", 1, source);
+        const document = testDocument("rename-invalid", source);
 
         expect(() => buildRenameWorkspaceEdit(document, positionAtNth(document, "$x", 1), "renamed"))
             .toThrow("must start with '$'");
@@ -54,7 +53,7 @@ describe("JSONiq rename", () => {
 
     it("returns null for non-variable cursor positions", () => {
         const source = "declare function local:f($x) { $x };";
-        const document = TextDocument.create("file:///rename-miss.jq", "jsoniq", 1, source);
+        const document = testDocument("rename-miss", source);
 
         const workspaceEdit = buildRenameWorkspaceEdit(document, positionAt(document, "local:f"), "$updated");
 

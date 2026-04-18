@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { findReferenceLocations } from "../src/server/references.js";
-import { positionAt, positionAtNth } from "./test-utils.js";
+import { positionAt, positionAtNth, testDocument } from "./test-utils.js";
 
 describe("JSONiq references", () => {
     it("finds references for a local variable without crossing shadowed scopes", () => {
@@ -14,7 +13,7 @@ describe("JSONiq references", () => {
             "};",
             "local:f($x)",
         ].join("\n");
-        const document = TextDocument.create("file:///references-shadowing.jq", "jsoniq", 1, source);
+        const document = testDocument("references-shadowing", source);
 
         const locations = findReferenceLocations(document, positionAtNth(document, "$x", 2), false);
 
@@ -30,7 +29,7 @@ describe("JSONiq references", () => {
             "let $y := $x + 1",
             "return $x + $y",
         ].join("\n");
-        const document = TextDocument.create("file:///references-include-decl.jq", "jsoniq", 1, source);
+        const document = testDocument("references-include-decl", source);
 
         const withoutDeclaration = findReferenceLocations(document, positionAtNth(document, "$x", 2), false);
         const withDeclaration = findReferenceLocations(document, positionAtNth(document, "$x", 2), true);
@@ -48,7 +47,7 @@ describe("JSONiq references", () => {
 
     it("returns empty result outside variable identifiers", () => {
         const source = "declare function local:f($x) { $x };";
-        const document = TextDocument.create("file:///references-miss.jq", "jsoniq", 1, source);
+        const document = testDocument("references-miss", source);
 
         const locations = findReferenceLocations(document, positionAt(document, "declare"), true);
 
@@ -60,7 +59,7 @@ describe("JSONiq references", () => {
             "declare function local:f($x) { $x };",
             "local:f(1) + local:f(2)",
         ].join("\n");
-        const document = TextDocument.create("file:///references-function.jq", "jsoniq", 1, source);
+        const document = testDocument("references-function", source);
 
         const locations = findReferenceLocations(document, positionAt(document, "local:f"), true);
 
@@ -77,7 +76,7 @@ describe("JSONiq references", () => {
             "declare function local:f($x) { $x };",
             "local:f(1, 2) + local:f(0)",
         ].join("\n");
-        const document = TextDocument.create("file:///references-function-overloads.jq", "jsoniq", 1, source);
+        const document = testDocument("references-function-overloads", source);
 
         const locations = findReferenceLocations(document, positionAt(document, "local:f(1, 2)"), true);
 
@@ -89,7 +88,7 @@ describe("JSONiq references", () => {
 
     it("finds references when cursor is on dollar sign of declaration", () => {
         const source = "declare function local:f($x) { $x };";
-        const document = TextDocument.create("file:///references-declaration-dollar.jq", "jsoniq", 1, source);
+        const document = testDocument("references-declaration-dollar", source);
 
         const locations = findReferenceLocations(document, positionAt(document, "$x"), false);
 

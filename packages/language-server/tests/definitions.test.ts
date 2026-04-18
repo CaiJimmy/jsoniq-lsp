@@ -1,23 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { findDefinitionLocation } from "../src/server/definitions.js";
+import { testDocument } from "./test-utils.js";
 
 describe("JSONiq go-to-definition", () => {
     it("resolves variable reference to the nearest declaration", () => {
-        const document = TextDocument.create(
-            "file:///definitions-shadowing.jq",
-            "jsoniq",
-            1,
-            [
-                "declare variable $x := 10;",
-                "declare function local:f($x) {",
-                "  let $y := $x + 1",
-                "  return $y + $x",
-                "};",
-                "local:f($x)",
-            ].join("\n"),
-        );
+        const document = testDocument("definitions-shadowing", [
+            "declare variable $x := 10;",
+            "declare function local:f($x) {",
+            "  let $y := $x + 1",
+            "  return $y + $x",
+            "};",
+            "local:f($x)",
+        ]);
 
         const localReference = findDefinitionLocation(document, { line: 3, character: 15 });
         const globalReference = findDefinitionLocation(document, { line: 5, character: 9 });
@@ -28,16 +23,11 @@ describe("JSONiq go-to-definition", () => {
 
     it("returns declaration location when cursor is already on declaration", () => {
         const firstLine = "declare function local:f($x) {";
-        const document = TextDocument.create(
-            "file:///definitions-on-declaration.jq",
-            "jsoniq",
-            1,
-            [
-                firstLine,
-                "  return $x",
-                "};",
-            ].join("\n"),
-        );
+        const document = testDocument("definitions-on-declaration", [
+            firstLine,
+            "  return $x",
+            "};",
+        ]);
 
         const declarationCharacter = firstLine.indexOf("$x") + 1;
         const location = findDefinitionLocation(document, { line: 0, character: declarationCharacter });
@@ -48,16 +38,11 @@ describe("JSONiq go-to-definition", () => {
 
     it("resolves definition when cursor is on the dollar sign of a parameter", () => {
         const firstLine = "declare function local:f($x) {";
-        const document = TextDocument.create(
-            "file:///definitions-parameter-dollar.jq",
-            "jsoniq",
-            1,
-            [
-                firstLine,
-                "  return $x",
-                "};",
-            ].join("\n"),
-        );
+        const document = testDocument("definitions-parameter-dollar", [
+            firstLine,
+            "  return $x",
+            "};",
+        ]);
 
         const location = findDefinitionLocation(document, { line: 0, character: firstLine.indexOf("$x") });
 
@@ -66,17 +51,12 @@ describe("JSONiq go-to-definition", () => {
     });
 
     it("resolves function call to function declaration", () => {
-        const document = TextDocument.create(
-            "file:///definitions-function-call.jq",
-            "jsoniq",
-            1,
-            [
-                "declare function local:f($x) {",
-                "  $x",
-                "};",
-                "local:f(1)",
-            ].join("\n"),
-        );
+        const document = testDocument("definitions-function-call", [
+            "declare function local:f($x) {",
+            "  $x",
+            "};",
+            "local:f(1)",
+        ]);
 
         const location = findDefinitionLocation(document, { line: 3, character: 2 });
 
@@ -86,12 +66,7 @@ describe("JSONiq go-to-definition", () => {
     });
 
     it("returns null when position is not on a resolvable variable", () => {
-        const document = TextDocument.create(
-            "file:///definitions-null.jq",
-            "jsoniq",
-            1,
-            "1 + 2",
-        );
+        const document = testDocument("definitions-null", "1 + 2");
 
         const location = findDefinitionLocation(document, { line: 0, character: 0 });
 

@@ -1,28 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
     analyzeVariableScopes,
     findVariableOccurrenceAtPosition,
     getVisibleDeclarationsAtPosition,
 } from "../src/server/analysis.js";
+import { testDocument } from "./test-utils.js";
 
 describe("JSONiq variable scope analysis", () => {
     it("collects variable declarations from function params and FLWOR clauses", () => {
-        const document = TextDocument.create(
-            "file:///scope-declarations.jq",
-            "jsoniq",
-            1,
-            [
-                "declare function local:f($a, $b as integer) {",
-                "  for $x at $pos in (1, 2, 3)",
-                "  let $y := $x + $a",
-                "  group by $g := $y mod 2",
-                "  count $c",
-                "  return $g + $c + $b",
-                "};",
-            ].join("\n"),
-        );
+        const document = testDocument("scope-declarations", [
+            "declare function local:f($a, $b as integer) {",
+            "  for $x at $pos in (1, 2, 3)",
+            "  let $y := $x + $a",
+            "  group by $g := $y mod 2",
+            "  count $c",
+            "  return $g + $c + $b",
+            "};",
+        ]);
 
         const analysis = analyzeVariableScopes(document);
         const declarationNames = analysis.definitions.map((declaration) => declaration.name);
@@ -40,19 +35,14 @@ describe("JSONiq variable scope analysis", () => {
     });
 
     it("resolves references to the nearest declaration", () => {
-        const document = TextDocument.create(
-            "file:///scope-resolution.jq",
-            "jsoniq",
-            1,
-            [
-                "declare variable $x := 10;",
-                "declare function local:f($x) {",
-                "  let $y := $x + 1",
-                "  return $y + $x",
-                "};",
-                "local:f($x)",
-            ].join("\n"),
-        );
+        const document = testDocument("scope-resolution", [
+            "declare variable $x := 10;",
+            "declare function local:f($x) {",
+            "  let $y := $x + 1",
+            "  return $y + $x",
+            "};",
+            "local:f($x)",
+        ]);
 
         const analysis = analyzeVariableScopes(document);
         const references = analysis.references.filter((reference) => reference.name.startsWith("$")).map((reference) => ({
@@ -71,17 +61,12 @@ describe("JSONiq variable scope analysis", () => {
     });
 
     it("resolves function call references by name and arity", () => {
-        const document = TextDocument.create(
-            "file:///scope-function-references.jq",
-            "jsoniq",
-            1,
-            [
-                "declare function local:add($left, $right) {",
-                "  $left + $right",
-                "};",
-                "local:add(1, 2)",
-            ].join("\n"),
-        );
+        const document = testDocument("scope-function-references", [
+            "declare function local:add($left, $right) {",
+            "  $left + $right",
+            "};",
+            "local:add(1, 2)",
+        ]);
 
         const analysis = analyzeVariableScopes(document);
         const functionReference = analysis.references.find((reference) => reference.name === "local:add#2");
@@ -100,15 +85,10 @@ describe("JSONiq variable scope analysis", () => {
     });
 
     it("supports multiple for variables in the same clause", () => {
-        const document = TextDocument.create(
-            "file:///scope-multi-for.jq",
-            "jsoniq",
-            1,
-            [
-                "for $x in (1, 2, 3), $y in ($x, 4)",
-                "return 10 * $x + $y",
-            ].join("\n"),
-        );
+        const document = testDocument("scope-multi-for", [
+            "for $x in (1, 2, 3), $y in ($x, 4)",
+            "return 10 * $x + $y",
+        ]);
 
         const analysis = analyzeVariableScopes(document);
 
@@ -128,15 +108,10 @@ describe("JSONiq variable scope analysis", () => {
     });
 
     it("supports multiple for bindings that each define an at-position variable", () => {
-        const document = TextDocument.create(
-            "file:///scope-multi-for-at.jq",
-            "jsoniq",
-            1,
-            [
-                "for $x at $ix in (1, 2), $y at $iy in ($x, 3)",
-                "return $x + $ix + $y + $iy",
-            ].join("\n"),
-        );
+        const document = testDocument("scope-multi-for-at", [
+            "for $x at $ix in (1, 2), $y at $iy in ($x, 3)",
+            "return $x + $ix + $y + $iy",
+        ]);
 
         const analysis = analyzeVariableScopes(document);
 
@@ -165,17 +140,12 @@ describe("JSONiq variable scope analysis", () => {
     });
 
     it("stores references per declaration and supports binary-search occurrence lookup", () => {
-        const document = TextDocument.create(
-            "file:///scope-index.jq",
-            "jsoniq",
-            1,
-            [
-                "declare function local:f($x) {",
-                "  let $y := $x + 1",
-                "  return $y + $x",
-                "};",
-            ].join("\n"),
-        );
+        const document = testDocument("scope-index", [
+            "declare function local:f($x) {",
+            "  let $y := $x + 1",
+            "  return $y + $x",
+            "};",
+        ]);
 
         const analysis = analyzeVariableScopes(document);
         const parameter = analysis.definitions.find((declaration) => declaration.name === "$x" && declaration.kind === "parameter");
@@ -196,16 +166,11 @@ describe("JSONiq variable scope analysis", () => {
     });
 
     it("returns correct declaration for reference on the same line as declaration", () => {
-        const document = TextDocument.create(
-            "file:///scope-same-line.jq",
-            "jsoniq",
-            1,
-            [
-                "declare function local:f($x) {",
-                "  let $y := $x + 1 return $y + $x",
-                "};",
-            ].join("\n"),
-        );
+        const document = testDocument("scope-same-line", [
+            "declare function local:f($x) {",
+            "  let $y := $x + 1 return $y + $x",
+            "};",
+        ]);
 
         const analysis = analyzeVariableScopes(document);
         const parameter = analysis.definitions.find((declaration) => declaration.name === "$x" && declaration.kind === "parameter");
@@ -226,16 +191,11 @@ describe("JSONiq variable scope analysis", () => {
     });
 
     it("resolves shadowed variables with the same name to the nearest declaration", () => {
-        const document = TextDocument.create(
-            "file:///scope-shadowing-same-name.jq",
-            "jsoniq",
-            1,
-            [
-                "let $x := 1",
-                "let $x := $x + 1",
-                "return $x",
-            ].join("\n"),
-        );
+        const document = testDocument("scope-shadowing-same-name", [
+            "let $x := 1",
+            "let $x := $x + 1",
+            "return $x",
+        ]);
 
         const analysis = analyzeVariableScopes(document);
         const xDeclarations = analysis.definitions.filter((declaration) => declaration.name === "$x" && declaration.kind === "let");
@@ -257,7 +217,7 @@ describe("JSONiq variable scope analysis", () => {
 
     it("does not make an incomplete variable declaration visible from trailing initializer whitespace", () => {
         const source = "declare variable $a := ";
-        const document = TextDocument.create("file:///scope-incomplete-var-init.jq", "jsoniq", 1, source);
+        const document = testDocument("scope-incomplete-var-init", source);
 
         const visibleDeclarations = getVisibleDeclarationsAtPosition(document, {
             line: 0,
@@ -269,7 +229,7 @@ describe("JSONiq variable scope analysis", () => {
 
     it("makes a completed prolog variable visible after its semicolon", () => {
         const source = "declare variable $a := 1; ";
-        const document = TextDocument.create("file:///scope-complete-var-init.jq", "jsoniq", 1, source);
+        const document = testDocument("scope-complete-var-init", source);
 
         const visibleDeclarations = getVisibleDeclarationsAtPosition(document, {
             line: 0,
