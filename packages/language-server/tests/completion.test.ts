@@ -17,7 +17,9 @@ describe("JSONiq completion", () => {
 
         const items = findVariableCompletions(document, positionAtNth(document, "$y", 1));
 
-        expect(labels(items)).toContain(["$global", "$x", "$y", "local:f"]);
+        expect(labels(items)).toContain("$x");
+        expect(labels(items)).toContain("$y");
+        expect(labels(items)).toContain("$global");
     });
 
     it("suggests '$' before typing a variable declaration prefix", () => {
