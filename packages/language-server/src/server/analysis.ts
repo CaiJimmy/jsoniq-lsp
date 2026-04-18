@@ -31,7 +31,7 @@ import { comparePositions } from "./utils/position.js";
 import { functionNameWithArityOrNull, varRefNameOrNull } from "./utils/name.js";
 import { findBuiltinFunctionDefinition, type BuiltinFunctionDefinition } from "./builtin-definitions.js";
 
-type DefinitionKind =
+export type DefinitionKind =
     | "declare-variable"
     | "let"
     | "for"
@@ -39,7 +39,8 @@ type DefinitionKind =
     | "group-by"
     | "count"
     | "parameter"
-    | "function";
+    | "function"
+    | "builtin-function";
 
 /**
  * Represents a variable declaration in the source code, including its name, kind (e.g. function parameter, FLWOR clause variable, etc.), 
@@ -341,7 +342,13 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
             const qname = node.qname();
             const name = qname?.getText().trim();
             if (name !== undefined && name !== "") {
-                declare(createDefinition(`$${name}`, "parameter", node, qname, document));
+                const declaration = createDefinition(`$${name}`, "parameter", node, node, document);
+                const dollarRange = rangeFromNode(node.Kdollar(), document);
+                declaration.selectionRange = {
+                    start: dollarRange.start,
+                    end: declaration.selectionRange.end,
+                };
+                declare(declaration);
             }
         }
 
