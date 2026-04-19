@@ -82,7 +82,10 @@ export interface Reference {
     name: string;
     node: ParseTree;
     range: Range;
-    declaration: Definition | undefined;
+}
+
+export interface ResolvedReference extends Reference {
+    declaration: Definition;
 }
 
 /**
@@ -104,7 +107,9 @@ export interface JsoniqAnalysis {
     definitions: SourceDefinition[];
 
     /** All variable references found in the document, in the order they were encountered during traversal. */
-    references: Reference[];
+    references: ResolvedReference[];
+
+    unresolvedReferences: Reference[];
 
     /** A sorted index of all variable occurrences (declarations and references) in the document, sorted by their position in the source code. */
     occurrenceIndex: OccurrenceIndexEntry[];
@@ -137,7 +142,8 @@ interface SymbolTraversalState {
 export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     const parseResult = parseJsoniqDocument(document);
     const definitions: SourceDefinition[] = [];
-    const references: Reference[] = [];
+    const references: ResolvedReference[] = [];
+    const unresolvedReferences: Reference[] = [];
     const occurrenceIndex: OccurrenceIndexEntry[] = [];
     const documentSymbols: DocumentSymbol[] = [];
     const scopeStack: ScopeFrame[] = [{ definitionByName: new Map() }];
@@ -229,20 +235,24 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
 
     const recordReference = (name: string, node: ParseTree, range: Range): void => {
         const declaration = resolve(name);
+        if (declaration === undefined) {
+            unresolvedReferences.push({
+                name,
+                node,
+                range,
+            });
+            return;
+        }
+
         const reference = {
             name,
             node,
             range,
             declaration,
-        } satisfies Reference;
+        } satisfies ResolvedReference;
 
-        /// We still push reference so we can show unresolved references diagnostic
         references.push(reference);
-
-        if (declaration === undefined) {
-            return;
-        }
-
+        
         occurrenceIndex.push({
             range: reference.range,
             declaration,
@@ -481,6 +491,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     return {
         definitions,
         references,
+        unresolvedReferences,
         occurrenceIndex,
         documentSymbols,
     };

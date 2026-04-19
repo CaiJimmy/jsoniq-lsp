@@ -21,11 +21,7 @@ export function collectSemanticDiagnostics(document: TextDocument): Diagnostic[]
     const analysis = getAnalysis(document);
     const diagnostics: Diagnostic[] = [];
 
-    for (const reference of analysis.references) {
-        if (reference.declaration !== undefined) {
-            continue;
-        }
-
+    for (const reference of analysis.unresolvedReferences) {
         diagnostics.push({
             severity: DiagnosticSeverity.Error,
             range: reference.range,
@@ -35,14 +31,6 @@ export function collectSemanticDiagnostics(document: TextDocument): Diagnostic[]
     }
 
     return diagnostics;
-}
-
-interface PendingToken {
-    line: number;
-    char: number;
-    length: number;
-    tokenType: number;
-    tokenModifiers: number;
 }
 
 function addSemanticToken(
