@@ -4,6 +4,7 @@ import {
     analyzeVariableScopes,
     findVariableOccurrenceAtPosition,
     getVisibleDeclarationsAtPosition,
+    isSourceDefinition,
 } from "../src/server/analysis.js";
 import { testDocument } from "./test-utils.js";
 
@@ -204,10 +205,14 @@ describe("JSONiq variable scope analysis", () => {
 
         const references = analysis.references
             .filter((reference) => reference.name === "$x")
-            .map((reference) => ({
-                line: reference.range.start.line,
-                declarationLine: reference.declaration?.selectionRange.start.line,
-            }));
+            .map((reference) => {
+                if (isSourceDefinition(reference.declaration)) {
+                    return {
+                        line: reference.range.start.line,
+                        declarationLine: reference.declaration.selectionRange.start.line
+                    };
+                }
+            });
 
         expect(references).toEqual([
             { line: 1, declarationLine: 0 },        /// The $x in the second line refers to the first declaration of $x
