@@ -59,11 +59,6 @@ export function collectSemanticTokens(document: TextDocument): SemanticTokens {
     }
 
     for (const reference of analysis.references) {
-        if (reference.declaration === undefined) {
-            continue;
-        }
-
-
         const tokenType = getTokenTypeForDefinition(reference.declaration.kind);
         const tokenModifiers = getTokenModifierForDefinition(reference.declaration.kind);
         addSemanticToken(builder, reference.range, tokenType, tokenModifiers);
