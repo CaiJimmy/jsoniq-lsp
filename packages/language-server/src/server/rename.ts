@@ -10,11 +10,12 @@ import {
     findVariableOccurrenceNearPosition,
     getAnalysis,
     type JsoniqAnalysis,
-    type Definition,
+    type SourceDefinition,
+    isSourceDefinition,
 } from "./analysis.js";
 
 interface RenameTarget {
-    declaration: Definition;
+    declaration: SourceDefinition;
     range: Range;
 }
 
@@ -107,7 +108,7 @@ function findRenameTarget(
         return null;
     }
 
-    if (occurrence.declaration.kind === "function") {
+    if (!isSourceDefinition(occurrence.declaration) || occurrence.declaration.kind === "function") {
         return null;
     }
 

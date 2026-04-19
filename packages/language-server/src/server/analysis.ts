@@ -42,13 +42,21 @@ export type DefinitionKind =
     | "function"
     | "builtin-function";
 
+export interface Definition {
+    name: string;
+    kind: DefinitionKind;
+
+    /// List of references that resolve to this declaration
+    references: Reference[];
+
+    isBuiltin: boolean;
+}
+
 /**
  * Represents a variable declaration in the source code, including its name, kind (e.g. function parameter, FLWOR clause variable, etc.), 
  * the corresponding parse tree node, and the range of the declaration in the source document.
  */
-export interface Definition {
-    name: string;
-    kind: DefinitionKind;
+export interface SourceDefinition extends Definition {
     node: ParseTree;
 
     /// Range = the entire range of the declaration
@@ -62,11 +70,8 @@ export interface Definition {
     /// Position where this definition is not visible anymore
     scopeEnd: Position;
 
-    /// List of references that resolve to this declaration
-    references: Reference[];
+    isBuiltin: false;
 }
-
-export type ResolvedDeclaration = Definition | BuiltinFunctionDefinition;
 
 /**
  * Represents a reference to a variable or function in the source code, along with a reference to the corresponding declaration (if it can be resolved).
@@ -75,7 +80,7 @@ export interface Reference {
     name: string;
     node: ParseTree;
     range: Range;
-    declaration: ResolvedDeclaration | undefined;
+    declaration: Definition | undefined;
 }
 
 /**
@@ -94,7 +99,7 @@ export interface OccurrenceIndexEntry {
 */
 export interface JsoniqAnalysis {
     /** All variable declarations found in the document, sorted by declaration position in source order. */
-    definitions: Definition[];
+    definitions: SourceDefinition[];
 
     /** All variable references found in the document, in the order they were encountered during traversal. */
     references: Reference[];
@@ -111,7 +116,7 @@ interface ScopeFrame {
      * Map from variable names to their corresponding declarations within this scope frame. 
      * Because variable shadows can occur, we save all of them in a list, but only the nearest declaration (the last one in the list) is the one that should be resolved from references in this scope.
      * */
-    definitionByName: Map<string, Array<Definition>>;
+    definitionByName: Map<string, Array<SourceDefinition>>;
 }
 
 interface SymbolTraversalState {
@@ -129,7 +134,7 @@ interface SymbolTraversalState {
  */
 export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     const parseResult = parseJsoniqDocument(document);
-    const definitions: Definition[] = [];
+    const definitions: SourceDefinition[] = [];
     const references: Reference[] = [];
     const occurrenceIndex: OccurrenceIndexEntry[] = [];
     const documentSymbols: DocumentSymbol[] = [];
@@ -162,7 +167,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     };
 
     /** Declares a definition in the current scope and adds it to the list of declarations and occurrence index. */
-    const declare = (newDef: Definition): void => {
+    const declare = (newDef: SourceDefinition): void => {
         definitions.push(newDef);
         const scope = currentScope();
 
@@ -188,7 +193,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     };
 
     /** Resolves a variable name to its corresponding declaration by searching the scope stack from innermost to outermost scope. */
-    const resolve = (name: string): ResolvedDeclaration | undefined => {
+    const resolve = (name: string): Definition | undefined => {
         const builtinDefinition = findBuiltinFunctionDefinition(name);
         if (builtinDefinition !== undefined) {
             return builtinDefinition;
@@ -474,8 +479,8 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     };
 }
 
-function isSourceDefinition(declaration: ResolvedDeclaration | undefined): declaration is Definition {
-    return declaration !== undefined && "selectionRange" in declaration;
+export function isSourceDefinition(declaration: Definition | undefined): declaration is SourceDefinition {
+    return declaration !== undefined && declaration.isBuiltin === false;
 }
 
 /**
@@ -555,7 +560,7 @@ export function getVisibleDeclarationsAtPosition(document: TextDocument, positio
 function isDeclarationVisibleAtOffset(
     document: TextDocument,
     source: string,
-    declaration: Definition,
+    declaration: SourceDefinition,
     queryOffset: number,
 ): boolean {
     if (declaration.kind === "function") {
@@ -583,7 +588,7 @@ function createDefinition(
     declarationNode: ParserRuleContext,
     selectionNode: ParseTree,
     document: TextDocument,
-): Definition {
+): SourceDefinition {
     return {
         name,
         kind,
@@ -592,6 +597,7 @@ function createDefinition(
         selectionRange: rangeFromNode(selectionNode, document),
         scopeEnd: { line: 0, character: 0 },
         references: [],
+        isBuiltin: false,
     };
 }
 

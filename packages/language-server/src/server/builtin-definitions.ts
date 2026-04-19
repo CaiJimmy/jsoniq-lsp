@@ -1,9 +1,12 @@
+import { Definition } from "./analysis.js";
 import { connection, type WrapperBuiltinFunctionSignature } from "./wrapper-connection.js";
 
-export interface BuiltinFunctionDefinition {
+export interface BuiltinFunctionDefinition extends Definition {
     name: string;
     kind: "builtin-function";
     signature: WrapperBuiltinFunctionSignature;
+
+    isBuiltin: true;
 }
 
 const builtinDefinitionsByName = new Map<string, BuiltinFunctionDefinition>();
@@ -26,6 +29,8 @@ export async function initializeBuiltinFunctionDefinitions(): Promise<void> {
                 name,
                 kind: "builtin-function",
                 signature,
+                references: [],
+                isBuiltin: true,
             });
         }
     })();

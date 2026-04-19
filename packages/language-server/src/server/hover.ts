@@ -8,17 +8,23 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import {
     findVariableOccurrenceNearPosition,
     getAnalysis,
+    isSourceDefinition,
 } from "./analysis.js";
 
 export function findHover(document: TextDocument, position: Position): Hover | null {
     const analysis = getAnalysis(document);
     const occurrence = findVariableOccurrenceNearPosition(analysis, position);
 
-    if (occurrence === undefined) {
+    if (occurrence === undefined || occurrence.declaration === undefined){
         return null;
     }
 
     const declaration = occurrence.declaration;
+
+    if (!isSourceDefinition(declaration)) {
+        return null;
+    }
+    
     const declarationLine = declaration.selectionRange.start.line + 1;
 
     return {

@@ -7,6 +7,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import {
     getAnalysis,
     findVariableOccurrenceNearPosition,
+    isSourceDefinition,
 } from "./analysis.js";
 
 /**
@@ -19,13 +20,14 @@ import {
 export function findDefinitionLocation(document: TextDocument, position: Position): Location | null {
     const analysis = getAnalysis(document);
     const occurrence = findVariableOccurrenceNearPosition(analysis, position);
+    const declaration = occurrence?.declaration;
 
-    if (occurrence === undefined) {
+    if (!isSourceDefinition(declaration)) {
         return null;
     }
 
     return {
         uri: document.uri,
-        range: occurrence.declaration.selectionRange,
+        range: declaration.selectionRange,
     };
 }
