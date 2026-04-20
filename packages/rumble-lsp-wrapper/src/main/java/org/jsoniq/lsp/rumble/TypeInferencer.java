@@ -19,6 +19,8 @@ import org.rumbledb.expressions.module.VariableDeclaration;
 import org.rumbledb.expressions.primary.InlineFunctionExpression;
 import org.rumbledb.types.SequenceType;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -52,6 +54,8 @@ public final class TypeInferencer {
             this.value = value;
         }
 
+        @Override
+        @JsonValue
         public String toString() {
             return this.value;
         }
