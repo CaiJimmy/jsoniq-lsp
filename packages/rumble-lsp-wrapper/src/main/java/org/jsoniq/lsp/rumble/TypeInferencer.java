@@ -5,6 +5,7 @@ import org.rumbledb.config.RumbleRuntimeConfiguration;
 import org.rumbledb.context.Name;
 import org.rumbledb.context.StaticContext;
 import org.rumbledb.exceptions.ExceptionMetadata;
+import org.rumbledb.exceptions.UnexpectedStaticTypeException;
 import org.rumbledb.expressions.Node;
 import org.rumbledb.expressions.flowr.Clause;
 import org.rumbledb.expressions.flowr.CountClause;
@@ -14,6 +15,7 @@ import org.rumbledb.expressions.flowr.GroupByVariableDeclaration;
 import org.rumbledb.expressions.flowr.LetClause;
 import org.rumbledb.expressions.module.FunctionDeclaration;
 import org.rumbledb.expressions.module.MainModule;
+import org.rumbledb.expressions.module.VariableDeclaration;
 import org.rumbledb.expressions.primary.InlineFunctionExpression;
 import org.rumbledb.types.SequenceType;
 
@@ -33,6 +35,9 @@ public final class TypeInferencer {
             .comparingInt(FunctionType::line)
             .thenComparingInt(FunctionType::column);
 
+    private record SourceRange(String location, int startLine, int startColumn, int endLine, int endColumn) {
+    }
+    
     /**
      * Represents the type of a variable.
      * 
@@ -68,39 +73,110 @@ public final class TypeInferencer {
             String returnType) {
     }
 
-    public record InferenceResult(List<VariableType> variableTypes, List<FunctionType> functionTypes, String error) {
+    public record TypeError(
+            String code,
+            String message,
+            String location,
+            int line,
+            int column,
+            int endLine,
+            int endColumn) {
     }
 
-    private final RumbleRuntimeConfiguration configuration;
+    public record InferenceResult(
+            List<VariableType> variableTypes,
+            List<FunctionType> functionTypes,
+            List<TypeError> typeErrors,
+            String error) {
+    }
+
+    private final RumbleRuntimeConfiguration permissiveConfiguration;
+    private final RumbleRuntimeConfiguration strictConfiguration;
 
     public TypeInferencer() {
-        this(new String[] {});
-    }
+        /**
+         * We need two separate configuration because when static typing is enabled, the
+         * parser will throw an exception as soon as it encounters a type error, which
+         * prevents us from collecting available type information for the rest of the
+         * query.
+         * 
+         * So we first parse the query with a permissive configuration (without static
+         * typing) to collect as much type information as possible, and then we parse it
+         * again with a strict configuration (with static typing) to collect type
+         * errors.
+         */
+        this.permissiveConfiguration = new RumbleRuntimeConfiguration();
 
-    public TypeInferencer(String[] args) {
-        this.configuration = new RumbleRuntimeConfiguration(args);
+        String[] withStaticTyping = { "--static-typing", "yes" };
+        this.strictConfiguration = new RumbleRuntimeConfiguration(withStaticTyping);
     }
 
     public InferenceResult infer(String query) {
         if (query == null || query.isEmpty()) {
-            return new InferenceResult(List.of(), List.of(), null);
+            return new InferenceResult(List.of(), List.of(), List.of(), null);
         }
+
+        List<VariableType> variableTypes = new ArrayList<>();
+        List<FunctionType> functionTypes = new ArrayList<>();
+        List<TypeError> typeErrors = new ArrayList<>();
+        String errorMessage = null;
 
         try {
-            MainModule module = VisitorHelpers.parseMainModuleFromQuery(query, this.configuration);
-            List<VariableType> variableTypes = new ArrayList<>();
-            List<FunctionType> functionTypes = new ArrayList<>();
-
+            MainModule module = VisitorHelpers.parseMainModuleFromQuery(query, this.permissiveConfiguration);
             visitNodeAndCollectTypes(module, variableTypes, functionTypes);
-
             variableTypes.sort(VARIABLE_TYPE_POSITION_COMPARATOR);
             functionTypes.sort(FUNCTION_TYPE_POSITION_COMPARATOR);
-
-            return new InferenceResult(variableTypes, functionTypes, null);
         } catch (Throwable throwable) {
-            String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
-            return new InferenceResult(List.of(), List.of(), errorMessage);
+            /// Because we are using the permissive configuration, the only kind of error we
+            /// expect here are parsing errors
+            /// We already have parsing error report from Typescript parser, so we don't
+            /// need these information
+            errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
         }
+
+        /// Parse with strict configuration to collect type errors, if any.
+        try {
+            VisitorHelpers.parseMainModuleFromQuery(query, this.strictConfiguration);
+        } catch (UnexpectedStaticTypeException exception) {
+            typeErrors.add(toTypeError(exception));
+            if (errorMessage == null) {
+                errorMessage = Objects.toString(exception.getMessage(), exception.getClass().getName());
+            }
+        } catch (Throwable throwable) {
+            if (errorMessage == null) {
+                errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
+            }
+        }
+
+        return new InferenceResult(variableTypes, functionTypes, typeErrors, errorMessage);
+    }
+
+    private static TypeError toTypeError(UnexpectedStaticTypeException exception) {
+        ExceptionMetadata metadata = exception.getMetadata() == null
+                ? ExceptionMetadata.EMPTY_METADATA
+                : exception.getMetadata();
+        String code = exception.getErrorCode();
+        String message = Objects.toString(exception.getJSONiqErrorMessage(),  exception.getMessage());
+        SourceRange range = chooseBestErrorRange(metadata);
+        return new TypeError(
+                code,
+                message,
+                range.location(),
+                range.startLine(),
+                range.startColumn(),
+                range.endLine(),
+                range.endColumn());
+    }
+
+    private static SourceRange chooseBestErrorRange(ExceptionMetadata metadata) {
+        int startLine = Math.max(1, metadata.getTokenLineNumber());
+        int startColumn = Math.max(0, metadata.getTokenColumnNumber());
+        return new SourceRange(
+                Objects.toString(metadata.getLocation(), ""),
+                startLine,
+                startColumn,
+                startLine,
+                startColumn + 1);
     }
 
     /**
@@ -118,7 +194,7 @@ public final class TypeInferencer {
             return;
         }
 
-        collectFunctionType(node, functionTypes);
+        collectFunctionType(node, variableTypes, functionTypes);
         collectVariableType(node, variableTypes);
 
         for (Node child : node.getChildren()) {
@@ -134,6 +210,7 @@ public final class TypeInferencer {
      */
     private static void collectFunctionType(
             Node node,
+            List<VariableType> variableTypes,
             List<FunctionType> functionTypes) {
         if (!(node instanceof FunctionDeclaration functionDeclaration)) {
             return;
@@ -156,6 +233,11 @@ public final class TypeInferencer {
             String parameterName = name.getLocalName() == null ? name.toString() : name.getLocalName();
             String parameterType = type == null ? "item*" : type.toString();
             parameterTypes.put("$" + parameterName, parameterType);
+            addVariableTypeFromContext(
+                    functionExpression.getStaticContext(),
+                    name,
+                    "FunctionParameterDeclaration",
+                    variableTypes);
         });
 
         SequenceType returnType = functionExpression.getReturnType();
@@ -180,6 +262,12 @@ public final class TypeInferencer {
     private static void collectVariableType(
             Node node,
             List<VariableType> variableTypes) {
+        if (node instanceof VariableDeclaration variableDeclaration) {
+            /// Global variable declaration does not Clause type, we need to handle it separately
+            addDeclaredVariableType(variableDeclaration, variableTypes);
+            return;
+        }
+
         if (!(node instanceof Clause clause)) {
             return;
         }
@@ -243,6 +331,24 @@ public final class TypeInferencer {
                         variableTypes);
             }
         }
+    }
+
+    private static void addDeclaredVariableType(
+            VariableDeclaration variableDeclaration,
+            List<VariableType> variableTypes) {
+        Name variableName = variableDeclaration.getVariableName();
+        ExceptionMetadata metadata = variableDeclaration.getMetadata();
+        if (variableName == null || metadata == null) {
+            return;
+        }
+
+        SequenceType variableType = variableDeclaration.getSequenceType();
+        variableTypes.add(new VariableType(
+                metadata.getTokenLineNumber(),
+                metadata.getTokenColumnNumber(),
+                variableName.toString(),
+                variableType.toString(),
+                "DeclareVariableDeclaration"));
     }
 
     /**

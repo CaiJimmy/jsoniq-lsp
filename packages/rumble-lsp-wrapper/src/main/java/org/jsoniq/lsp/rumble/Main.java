@@ -20,7 +20,8 @@ public class Main {
     private static final BuiltinFunctions BUILTIN_FUNCTIONS = new BuiltinFunctions();
     private static final String REQUEST_TYPE_INFER_TYPES = "inferTypes";
     private static final String REQUEST_TYPE_BUILTIN_FUNCTIONS = "builtinFunctions";
-    private static final QueryResponseBody EMPTY_QUERY_RESPONSE_BODY = new QueryResponseBody(List.of(), List.of());
+    private static final QueryResponseBody EMPTY_QUERY_RESPONSE_BODY = new QueryResponseBody(List.of(), List.of(),
+            List.of());
     private static final BuiltInFunctionListResponseBody EMPTY_BUILTIN_RESPONSE_BODY = new BuiltInFunctionListResponseBody(
             Map.of());
     private static final Map<String, Function<WrapperRequest, WrapperDaemonResponse>> DAEMON_HANDLERS = Map.of(
@@ -42,7 +43,8 @@ public class Main {
 
     private record QueryResponseBody(
             List<TypeInferencer.VariableType> variableTypes,
-            List<TypeInferencer.FunctionType> functionTypes) {
+            List<TypeInferencer.FunctionType> functionTypes,
+            List<TypeInferencer.TypeError> typeErrors) {
     }
 
     private record BuiltInFunctionListResponseBody(
@@ -72,7 +74,8 @@ public class Main {
         try {
             String query = readAllStdin();
             TypeInferencer.InferenceResult result = INFERENCER.infer(query);
-            writeAndExit(new WrapperResponse(result.variableTypes(), result.functionTypes(), Map.of(), result.error()), 0);
+            writeAndExit(new WrapperResponse(result.variableTypes(), result.functionTypes(), Map.of(), result.error()),
+                    0);
         } catch (Throwable throwable) {
             String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
             writeAndExit(new WrapperResponse(List.of(), List.of(), Map.of(), errorMessage), 1);
@@ -135,10 +138,8 @@ public class Main {
         byte[] decodedBytes = Base64.getDecoder().decode(request.body());
         String query = new String(decodedBytes, StandardCharsets.UTF_8);
         TypeInferencer.InferenceResult result = INFERENCER.infer(query);
-        return new QueryResponse(
-                request.id(),
-                REQUEST_TYPE_INFER_TYPES,
-                new QueryResponseBody(result.variableTypes(), result.functionTypes()),
+        return new QueryResponse(request.id(), REQUEST_TYPE_INFER_TYPES,
+                new QueryResponseBody(result.variableTypes(), result.functionTypes(), result.typeErrors()),
                 result.error());
     }
 
