@@ -31,14 +31,17 @@ import { comparePositions } from "./utils/position.js";
 import { functionNameWithArityOrNull, varRefNameOrNull } from "./utils/name.js";
 import { findBuiltinFunctionDefinition, type BuiltinFunctionDefinition } from "./builtin-definitions.js";
 
-export type DefinitionKind =
+export type VariableKind = 
     | "declare-variable"
     | "let"
     | "for"
     | "for-position"
     | "group-by"
     | "count"
-    | "parameter"
+    | "parameter";
+
+export type DefinitionKind =
+    | VariableKind
     | "function"
     | "builtin-function";
 
