@@ -37,28 +37,48 @@ public final class TypeInferencer {
     public record SourceRange(String location, Position start, Position end) {
     }
 
+    public enum VariableKind {
+        Declare("declare-variable"),
+        Let("let"),
+        For("for"),
+        ForPosition("for-position"),
+        GroupBy("group-by"),
+        Count("count"),
+        Parameter("parameter");
+
+        private final String value;
+
+        private VariableKind(String value) {
+            this.value = value;
+        }
+
+        public String toString() {
+            return this.value;
+        }
+    }
+
     /**
      * Represents the type of a variable.
      * 
-     * @param line     the line number of the variable declaration
-     * @param character   the column number of the variable declaration
-     * @param name     the name of the variable
-     * @param type     the inferred type of the variable
-     * @param nodeKind the kind of AST node that declares the variable (e.g.,
-     *                 "ForVariableDeclaration", "LetVariableDeclaration", etc.)
+     * @param line      the line number of the variable declaration
+     * @param character the column number of the variable declaration
+     * @param name      the name of the variable
+     * @param type      the inferred type of the variable
+     * @param kind      the kind of AST node that declares the variable (e.g.,
+     *                  "ForVariableDeclaration", "LetVariableDeclaration", etc.)
      */
     public record VariableType(
             Position position,
             String name,
             String type,
-            String nodeKind) {
+            VariableKind kind) {
     }
 
     /**
      * Represents the type of a function.
      * 
      * @param line           the line number of the function declaration
-     * @param character         the column number of the function declaration
+     * @param character      the column number of the function declaration
      * @param name           the name of the function
      * @param parameterTypes a map of parameter names to their types
      * @param returnType     the return type of the function
@@ -225,7 +245,7 @@ public final class TypeInferencer {
             addVariableTypeFromContext(
                     functionExpression.getStaticContext(),
                     name,
-                    "FunctionParameterDeclaration",
+                    VariableKind.Parameter,
                     variableTypes);
         });
 
@@ -277,7 +297,7 @@ public final class TypeInferencer {
             addVariableTypeFromContext(
                     typeContext,
                     forClause.getVariableName(),
-                    "ForVariableDeclaration",
+                    VariableKind.For,
                     variableTypes);
 
             // Positional variable is optional, so we check if it exists before trying to
@@ -287,7 +307,7 @@ public final class TypeInferencer {
                 addVariableTypeFromContext(
                         typeContext,
                         positionalVariableName,
-                        "ForPositionalVariableDeclaration",
+                        VariableKind.ForPosition,
                         variableTypes);
             }
             return;
@@ -297,7 +317,7 @@ public final class TypeInferencer {
             addVariableTypeFromContext(
                     typeContext,
                     letClause.getVariableName(),
-                    "LetVariableDeclaration",
+                    VariableKind.Let,
                     variableTypes);
             return;
         }
@@ -306,7 +326,7 @@ public final class TypeInferencer {
             addVariableTypeFromContext(
                     typeContext,
                     countClause.getCountVariableName(),
-                    "CountVariableDeclaration",
+                    VariableKind.Count,
                     variableTypes);
             return;
         }
@@ -316,7 +336,7 @@ public final class TypeInferencer {
                 addVariableTypeFromContext(
                         typeContext,
                         groupByVariable.getVariableName(),
-                        "GroupByVariableDeclaration",
+                        VariableKind.GroupBy,
                         variableTypes);
             }
         }
@@ -336,7 +356,7 @@ public final class TypeInferencer {
                 new Position(metadata.getTokenLineNumber(), metadata.getTokenColumnNumber()),
                 variableName.toString(),
                 variableType.toString(),
-                "DeclareVariableDeclaration"));
+                VariableKind.Declare));
     }
 
     /**
@@ -345,7 +365,7 @@ public final class TypeInferencer {
      * 
      * @param context       the static context to retrieve the variable type from
      * @param variableName  the name of the variable to retrieve the type for
-     * @param nodeKind      the kind of AST node that declares the variable (e.g.,
+     * @param kind          the kind of AST node that declares the variable (e.g.,
      *                      "ForVariableDeclaration")
      * @param variableTypes the list to add the variable type to
      * @return true if the variable type was successfully added, false otherwise
@@ -353,7 +373,7 @@ public final class TypeInferencer {
     private static boolean addVariableTypeFromContext(
             StaticContext context,
             Name variableName,
-            String nodeKind,
+            VariableKind kind,
             List<VariableType> variableTypes) {
         if (context == null || variableName == null) {
             return false;
@@ -367,7 +387,7 @@ public final class TypeInferencer {
 
             variableTypes
                     .add(new VariableType(new Position(line, column), variableName.toString(), variableType.toString(),
-                            nodeKind));
+                            kind));
             return true;
         } catch (Throwable ignored) {
             return false;

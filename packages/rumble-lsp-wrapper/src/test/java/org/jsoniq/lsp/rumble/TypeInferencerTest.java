@@ -1,5 +1,6 @@
 package org.jsoniq.lsp.rumble;
 
+import org.jsoniq.lsp.rumble.TypeInferencer.VariableKind;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -37,7 +38,7 @@ class TypeInferencerTest {
 
         Optional<TypeInferencer.VariableType> letVariableType = result.variableTypes()
                 .stream()
-                .filter(type -> "LetVariableDeclaration".equals(type.nodeKind()))
+                .filter(type -> VariableKind.Let.equals(type.kind()))
                 .filter(type -> "x".equals(type.name()))
                 .findFirst();
 
@@ -58,7 +59,7 @@ class TypeInferencerTest {
 
         Optional<TypeInferencer.VariableType> declaredVariableType = result.variableTypes()
                 .stream()
-                .filter(type -> "DeclareVariableDeclaration".equals(type.nodeKind()))
+                .filter(type -> VariableKind.Declare.equals(type.kind()))
                 .filter(type -> "a".equals(type.name()))
                 .findFirst();
 
@@ -88,12 +89,12 @@ class TypeInferencerTest {
 
         Optional<TypeInferencer.VariableType> parameterAType = result.variableTypes()
                 .stream()
-                .filter(type -> "FunctionParameterDeclaration".equals(type.nodeKind()))
+                .filter(type -> VariableKind.Parameter.equals(type.kind()))
                 .filter(type -> "a".equals(type.name()))
                 .findFirst();
         Optional<TypeInferencer.VariableType> parameterBType = result.variableTypes()
                 .stream()
-                .filter(type -> "FunctionParameterDeclaration".equals(type.nodeKind()))
+                .filter(type -> VariableKind.Parameter.equals(type.kind()))
                 .filter(type -> "b".equals(type.name()))
                 .findFirst();
 
@@ -130,7 +131,7 @@ class TypeInferencerTest {
 
         Set<String> xTypes = result.variableTypes()
                 .stream()
-                .filter(type -> "LetVariableDeclaration".equals(type.nodeKind()))
+                .filter(type -> VariableKind.Let.equals(type.kind()))
                 .filter(type -> "x".equals(type.name()))
                 .map(TypeInferencer.VariableType::type)
                 .collect(Collectors.toSet());
