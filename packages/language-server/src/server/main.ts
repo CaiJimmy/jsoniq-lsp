@@ -17,6 +17,7 @@ import { buildRenameWorkspaceEdit, prepareRename } from "./rename.js";
 import { findHover } from "./hover.js";
 import { findCompletions } from "./completion.js";
 import { initializeBuiltinFunctionDefinitions } from "./builtin-definitions.js";
+import { collectTypeDiagnostics } from "./type-diagnostics.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -32,12 +33,16 @@ async function refreshDiagnostics(uri: string): Promise<void> {
     const semanticDiagnostics = syntaxDiagnostics.length === 0
         ? collectSemanticDiagnostics(document)
         : [];
+    const typeDiagnostics = syntaxDiagnostics.length === 0
+        ? await collectTypeDiagnostics(document)
+        : [];
 
     connection.sendDiagnostics({
         uri: document.uri,
         diagnostics: [
             ...syntaxDiagnostics,
             ...semanticDiagnostics,
+            ...typeDiagnostics,
         ],
     });
 }
