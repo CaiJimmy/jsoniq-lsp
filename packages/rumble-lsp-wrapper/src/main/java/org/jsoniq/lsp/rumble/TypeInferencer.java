@@ -36,9 +36,6 @@ public final class TypeInferencer {
     public record Position(int line, int character) {
     }
 
-    public record SourceRange(String location, Position start, Position end) {
-    }
-
     public enum VariableKind {
         Declare("declare-variable"),
         Let("let"),
@@ -98,7 +95,7 @@ public final class TypeInferencer {
             String code,
             String message,
             String location,
-            SourceRange range) {
+            Position position) {
     }
 
     public record InferenceResult(
@@ -175,21 +172,28 @@ public final class TypeInferencer {
                 : exception.getMetadata();
         String code = exception.getErrorCode();
         String message = Objects.toString(exception.getJSONiqErrorMessage(), exception.getMessage());
-        SourceRange range = chooseBestErrorRange(metadata);
         return new TypeError(
                 code,
                 message,
-                range.location(),
-                range);
+                metadata.getLocation(),
+                createPosition(metadata));
     }
 
-    private static SourceRange chooseBestErrorRange(ExceptionMetadata metadata) {
-        int startLine = Math.max(1, metadata.getTokenLineNumber());
-        int startColumn = Math.max(0, metadata.getTokenColumnNumber());
-        return new SourceRange(
-                Objects.toString(metadata.getLocation(), ""),
-                new Position(startLine, startColumn),
-                new Position(startLine, startColumn + 1));
+    /**
+     * Creates a Position object from the given exception metadata.
+     * 
+     * Note: in language server, the type Position.line uses uinteger type, and
+     * starts from 0,
+     * while in Rumble ExceptionMetadata, the line number starts from 1, that's why
+     * 1 is subtracted from the line number to make it uniform.
+     * 
+     * @param metadata the exception metadata to create the position from
+     * @return a Position object representing the position of the error in the source code
+     */
+    private static Position createPosition(ExceptionMetadata metadata) {
+        int line = Math.max(0, metadata.getTokenLineNumber() - 1);
+        int column = Math.max(0, metadata.getTokenColumnNumber());
+        return new Position(line, column);
     }
 
     /**
@@ -238,9 +242,6 @@ public final class TypeInferencer {
             return;
         }
 
-        int line = metadata.getTokenLineNumber();
-        int column = metadata.getTokenColumnNumber();
-
         Map<String, String> parameterTypes = new LinkedHashMap<>();
         functionExpression.getParams().forEach((name, type) -> {
             String parameterName = name.getLocalName() == null ? name.toString() : name.getLocalName();
@@ -259,7 +260,7 @@ public final class TypeInferencer {
         }
 
         functionTypes.add(new FunctionType(
-                new Position(line, column),
+                createPosition(metadata),
                 functionDeclaration.getFunctionIdentifier().getName().toString(),
                 parameterTypes,
                 returnType.toString()));
@@ -357,7 +358,7 @@ public final class TypeInferencer {
 
         SequenceType variableType = variableDeclaration.getSequenceType();
         variableTypes.add(new VariableType(
-                new Position(metadata.getTokenLineNumber(), metadata.getTokenColumnNumber()),
+                createPosition(metadata),
                 variableName.toString(),
                 variableType.toString(),
                 VariableKind.Declare));
@@ -386,11 +387,8 @@ public final class TypeInferencer {
         try {
             SequenceType variableType = context.getVariableSequenceType(variableName);
             ExceptionMetadata metadata = context.getVariableMetadata(variableName);
-            int line = metadata.getTokenLineNumber();
-            int column = metadata.getTokenColumnNumber();
-
             variableTypes
-                    .add(new VariableType(new Position(line, column), variableName.toString(), variableType.toString(),
+                    .add(new VariableType(createPosition(metadata), variableName.toString(), variableType.toString(),
                             kind));
             return true;
         } catch (Throwable ignored) {

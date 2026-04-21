@@ -157,10 +157,8 @@ class TypeInferencerTest {
 
         TypeInferencer.TypeError error = result.typeErrors().get(0);
         assertEquals("XPTY0004", error.code());
-        assertEquals(1, error.range().start().line());
-        assertEquals(0, error.range().start().character());
-        assertEquals(1, error.range().end().line());
-        assertEquals(1, error.range().end().character());
+        assertEquals(0, error.position().line());
+        assertEquals(0, error.position().character());
     }
 
     @Test
@@ -180,10 +178,8 @@ class TypeInferencerTest {
         TypeInferencer.TypeError error = result.typeErrors().get(0);
         assertEquals("XPTY0004", error.code());
         assertTrue(error.message().contains("arities are not allowed for additive expressions"));
-        assertEquals(2, error.range().start().line());
-        assertEquals(4, error.range().start().character());
-        assertEquals(2, error.range().end().line());
-        assertEquals(5, error.range().end().character());
+        assertEquals(1, error.position().line());
+        assertEquals(4, error.position().character());
     }
 
 }
