@@ -94,16 +94,24 @@ public class Main {
 
             RequestHandler handler = DAEMON_HANDLERS.get(requestType);
             if (handler == null) {
-                return new WrapperResponse(requestId, requestType, null,
+                return new WrapperResponse(requestId, requestType, fallbackResponseBody(requestType),
                         "Unsupported requestType '" + requestType + "'.");
             }
 
-            return new WrapperResponse(requestId, requestLine,
+            return new WrapperResponse(requestId, requestType,
                     handler.handle(new Request(requestId, requestType, request.body())), null);
         } catch (Throwable throwable) {
             String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
-            return new WrapperResponse(requestId, requestType, null, errorMessage);
+            return new WrapperResponse(requestId, requestType, fallbackResponseBody(requestType), errorMessage);
         }
+    }
+
+    private static ResponseBody fallbackResponseBody(String requestType) {
+        if (REQUEST_TYPE_BUILTIN_FUNCTIONS.equals(requestType)) {
+            return BuiltinFunctions.EMPTY_RESPONSE_BODY;
+        }
+
+        return TypeInferencer.EMPTY_RESULT;
     }
 
     private static String readAllStdin() throws IOException {
