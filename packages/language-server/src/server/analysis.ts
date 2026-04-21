@@ -405,19 +405,6 @@ export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
                 containingFunction.parameters.push(declaration);
             }
         }
-
-        /**
-         * Count clause introduces a new variable, for example:
-         * for $x in (1, 2, 3)
-         * count $i
-         * return $x + $i
-         * In this example, the count clause introduces a new variable $i that is bound to the position of each item in the iteration. 
-         * This variable should be treated as a declaration and should be resolvable from references within the FLWOR expression. 
-         */
-        if (node instanceof CountClauseContext) {
-            const varRef = node.varRef();
-            declareVariable("count", node, varRef);
-        }
     };
 
     const collectReferencesBeforeChildren = (node: ParseTree): void => {
@@ -442,10 +429,6 @@ export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
         // It's important that we do this after visiting the children, so that if there are references to this variable within its own initializer (e.g. let $x := $x + 1)
         if (node instanceof VarDeclContext) {
             declareVariable("declare-variable", node, node.varRef());
-        } else if (node instanceof LetVarContext) {
-            declareVariable("let", node, node.varRef());
-        } else if (node instanceof GroupByVarContext) {
-            declareVariable("group-by", node, node.varRef());
         } else if (node instanceof ForVarContext) {
             const variableRefs = node.varRef();
             const boundVariable = variableRefs[0];
@@ -456,6 +439,21 @@ export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
             if (positionVariable !== undefined) {
                 declareVariable("for-position", node, positionVariable);
             }
+        } else if (node instanceof LetVarContext) {
+            declareVariable("let", node, node.varRef());
+        } else if (node instanceof GroupByVarContext) {
+            declareVariable("group-by", node, node.varRef());
+        } else if (node instanceof CountClauseContext) {
+            /**
+             * Count clause introduces a new variable, for example:
+             * for $x in (1, 2, 3)
+             * count $i
+             * return $x + $i
+             * In this example, the count clause introduces a new variable $i that is bound to the position of each item in the iteration. 
+             * This variable should be treated as a declaration and should be resolvable from references within the FLWOR expression. 
+             */
+            const varRef = node.varRef();
+            declareVariable("count", node, varRef);
         }
 
         if (node instanceof FunctionDeclContext) {
