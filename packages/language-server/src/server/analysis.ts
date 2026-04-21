@@ -31,19 +31,20 @@ import { comparePositions } from "./utils/position.js";
 import { functionNameWithArityOrNull, varRefNameOrNull } from "./utils/name.js";
 import { findBuiltinFunctionDefinition, type BuiltinFunctionDefinition } from "./builtin-definitions.js";
 
-export type VariableKind = 
+export type VariableKind =
     | "declare-variable"
     | "let"
     | "for"
     | "for-position"
     | "group-by"
-    | "count"
-    | "parameter";
+    | "count";
 
-export type DefinitionKind =
+export type SourceDefinitionKind =
     | VariableKind
-    | "function"
-    | "builtin-function";
+    | "parameter"
+    | "function";
+
+export type DefinitionKind = SourceDefinitionKind | "builtin-function";
 
 export interface BaseDefinition {
     name: string;
@@ -59,7 +60,7 @@ export interface BaseDefinition {
  * Represents a variable declaration in the source code, including its name, kind (e.g. function parameter, FLWOR clause variable, etc.), 
  * the corresponding parse tree node, and the range of the declaration in the source document.
  */
-export interface SourceDefinition extends BaseDefinition {
+interface BaseSourceDefinition extends BaseDefinition {
     node: ParseTree;
 
     /// Range = the entire range of the declaration
@@ -75,6 +76,25 @@ export interface SourceDefinition extends BaseDefinition {
 
     isBuiltin: false;
 }
+
+export interface SourceVariableDefinition extends BaseSourceDefinition {
+    kind: VariableKind;
+}
+
+export interface SourceParameterDefinition extends BaseSourceDefinition {
+    kind: "parameter";
+    function: SourceFunctionDefinition;
+}
+
+export interface SourceFunctionDefinition extends BaseSourceDefinition {
+    kind: "function";
+    parameters: SourceParameterDefinition[];
+}
+
+export type SourceDefinition =
+    | SourceVariableDefinition
+    | SourceParameterDefinition
+    | SourceFunctionDefinition;
 
 export type Definition = SourceDefinition | BuiltinFunctionDefinition;
 
@@ -150,6 +170,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
     const occurrenceIndex: OccurrenceIndexEntry[] = [];
     const documentSymbols: DocumentSymbol[] = [];
     const scopeStack: ScopeFrame[] = [{ definitionByName: new Map() }];
+    const functionStack: SourceFunctionDefinition[] = [];
 
     const pushScope = (): void => {
         scopeStack.push({ definitionByName: new Map() });
@@ -227,7 +248,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
         return symbol;
     };
 
-    const declareVariable = (kind: DefinitionKind, node: ParserRuleContext, varRef: VarRefContext): void => {
+    const declareVariable = (kind: VariableKind, node: ParserRuleContext, varRef: VarRefContext): void => {
         const name = varRefNameOrNull(varRef);
         if (name === null) {
             return;
@@ -255,7 +276,7 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
         } satisfies ResolvedReference;
 
         references.push(reference);
-        
+
         occurrenceIndex.push({
             range: reference.range,
             declaration,
@@ -357,7 +378,9 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
         if (node instanceof FunctionDeclContext) {
             const name = functionNameWithArityOrNull(node);
             if (name !== null) {
-                declare(createDefinition(name, "function", node, node._fn_name ?? node.qname(), document));
+                const declaration = createDefinition(name, "function", node, node._fn_name ?? node.qname(), document);
+                declare(declaration);
+                functionStack.push(declaration);
             }
         }
     };
@@ -367,13 +390,19 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
             const qname = node.qname();
             const name = qname?.getText().trim();
             if (name !== undefined && name !== "") {
-                const declaration = createDefinition(`$${name}`, "parameter", node, qname, document);
+                const containingFunction = functionStack[functionStack.length - 1];
+                if (containingFunction === undefined) {
+                    return;
+                }
+
+                const declaration = createDefinition(`$${name}`, "parameter", node, qname, document, containingFunction);
                 const dollarRange = rangeFromNode(node.Kdollar(), document);
                 declaration.selectionRange = {
                     start: dollarRange.start,
                     end: declaration.selectionRange.end,
                 };
                 declare(declaration);
+                containingFunction.parameters.push(declaration);
             }
         }
 
@@ -427,6 +456,10 @@ export function analyzeVariableScopes(document: TextDocument): JsoniqAnalysis {
             if (positionVariable !== undefined) {
                 declareVariable("for-position", node, positionVariable);
             }
+        }
+
+        if (node instanceof FunctionDeclContext) {
+            functionStack.pop();
         }
     };
 
@@ -584,7 +617,7 @@ function isDeclarationVisibleAtOffset(
     declaration: SourceDefinition,
     queryOffset: number,
 ): boolean {
-    if (declaration.kind === "function") {
+    if (isSourceFunctionDefinition(declaration)) {
         return document.offsetAt(declaration.selectionRange.end) < queryOffset;
     }
 
@@ -595,7 +628,7 @@ function isDeclarationVisibleAtOffset(
 }
 
 /**
- * Creates a VariableDeclaration object from the given information, including the variable name, kind, corresponding parse tree nodes, and the range of the declaration in the source document.
+ * Creates a SourceDefinition object from the given information, including the variable name, kind, corresponding parse tree nodes, and the range of the declaration in the source document.
  * @param name The name of the variable being declared (e.g. "$x")
  * @param kind The kind of variable declaration (e.g. "parameter", "let", "for", etc.)
  * @param declarationNode The parse tree node corresponding to the entire variable declaration (e.g. the VarDeclContext, LetVarContext, etc.)
@@ -605,21 +638,80 @@ function isDeclarationVisibleAtOffset(
  */
 function createDefinition(
     name: string,
-    kind: DefinitionKind,
+    kind: "function",
     declarationNode: ParserRuleContext,
     selectionNode: ParseTree,
     document: TextDocument,
+): SourceFunctionDefinition;
+function createDefinition(
+    name: string,
+    kind: "parameter",
+    declarationNode: ParserRuleContext,
+    selectionNode: ParseTree,
+    document: TextDocument,
+    containingFunction: SourceFunctionDefinition,
+): SourceParameterDefinition;
+function createDefinition(
+    name: string,
+    kind: VariableKind,
+    declarationNode: ParserRuleContext,
+    selectionNode: ParseTree,
+    document: TextDocument,
+): SourceVariableDefinition;
+function createDefinition(
+    name: string,
+    kind: SourceDefinitionKind,
+    declarationNode: ParserRuleContext,
+    selectionNode: ParseTree,
+    document: TextDocument,
+    containingFunction?: SourceFunctionDefinition,
 ): SourceDefinition {
-    return {
+    const result = {
         name,
-        kind,
         node: declarationNode,
         range: rangeFromNode(declarationNode, document),
         selectionRange: rangeFromNode(selectionNode, document),
         scopeEnd: { line: 0, character: 0 },
         references: [],
-        isBuiltin: false,
+        isBuiltin: false as const,
     };
+
+    if (kind === "function") {
+        return {
+            ...result,
+            kind: "function",
+            parameters: [],
+        } satisfies SourceFunctionDefinition;
+    }
+    else if (kind === "parameter") {
+        if (containingFunction === undefined) {
+            throw new Error("Parameter declaration must belong to a function.");
+        }
+
+        return {
+            ...result,
+            kind: "parameter",
+            function: containingFunction,
+        } satisfies SourceParameterDefinition;
+    }
+    else {
+        return {
+            ...result,
+            kind
+        } satisfies SourceVariableDefinition;
+    }
+}
+
+export function isSourceVariableDefinition(declaration: BaseDefinition | undefined): declaration is SourceVariableDefinition {
+    return isSourceDefinition(declaration) && declaration.kind !== "parameter" && declaration.kind !== "function";
+}
+
+export function isSourceParameterDefinition(declaration: BaseDefinition | undefined): declaration is SourceParameterDefinition {
+    return isSourceDefinition(declaration) && declaration.kind === "parameter";
+}
+
+export function isSourceFunctionDefinition(declaration: BaseDefinition | undefined): declaration is SourceFunctionDefinition {
+    return isSourceDefinition(declaration) && declaration.kind === "function";
 }
 
 /**
