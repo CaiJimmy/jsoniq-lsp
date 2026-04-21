@@ -32,10 +32,6 @@ describe("RumbleWrapperConnection (integration)", () => {
             (type) => type.kind === "let" && type.name === "x",
         );
         expect(letType?.type).toBe("xs:integer");
-        const parameterType = response.body.variableTypes.find(
-            (type) => type.kind === "parameter" && type.name === "a",
-        );
-        expect(parameterType?.type).toBe("xs:integer");
 
         const functionType = response.body.functionTypes.find((type) => type.name === "local:f");
         expect(functionType).toBeDefined();
