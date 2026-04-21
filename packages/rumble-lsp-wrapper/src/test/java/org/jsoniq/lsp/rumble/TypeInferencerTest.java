@@ -8,20 +8,23 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TypeInferencerTest {
 
     private final TypeInferencer inferencer = new TypeInferencer();
 
+    private TypeInferencer.Result inferWithoutThrow(String query) {
+        return assertDoesNotThrow(() -> this.inferencer.infer(query));
+    }
+
     @Test
     void inferEmptyQueryReturnsNoErrorAndNoTypes() {
-        TypeInferencer.InferenceResult result = this.inferencer.infer("");
+        TypeInferencer.Result result = inferWithoutThrow("");
 
-        assertNull(result.error());
         assertTrue(result.variableTypes().isEmpty());
         assertTrue(result.functionTypes().isEmpty());
         assertTrue(result.typeErrors().isEmpty());
@@ -31,9 +34,7 @@ class TypeInferencerTest {
     void inferSimpleLetCollectsVariableType() {
         String query = "let $x := 1 return $x";
 
-        TypeInferencer.InferenceResult result = this.inferencer.infer(query);
-
-        assertNull(result.error());
+        TypeInferencer.Result result = inferWithoutThrow(query);
         assertTrue(result.typeErrors().isEmpty());
 
         Optional<TypeInferencer.VariableType> letVariableType = result.variableTypes()
@@ -53,9 +54,7 @@ class TypeInferencerTest {
                 $a
                 """;
 
-        TypeInferencer.InferenceResult result = this.inferencer.infer(query);
-
-        assertNull(result.error());
+        TypeInferencer.Result result = inferWithoutThrow(query);
 
         Optional<TypeInferencer.VariableType> declaredVariableType = result.variableTypes()
                 .stream()
@@ -71,9 +70,7 @@ class TypeInferencerTest {
     void inferFunctionDeclarationCollectsFunctionTypeAndParameters() {
         String query = "declare function local:f($a as integer, $b) { $a + 1 };";
 
-        TypeInferencer.InferenceResult result = this.inferencer.infer(query);
-
-        assertNull(result.error());
+        TypeInferencer.Result result = inferWithoutThrow(query);
         assertFalse(result.functionTypes().isEmpty());
         assertTrue(result.typeErrors().isEmpty());
 
@@ -106,12 +103,7 @@ class TypeInferencerTest {
 
     @Test
     void inferInvalidQueryReturnsError() {
-        TypeInferencer.InferenceResult result = this.inferencer.infer("let $x := return");
-
-        assertNotNull(result.error());
-        assertTrue(result.variableTypes().isEmpty());
-        assertTrue(result.functionTypes().isEmpty());
-        assertTrue(result.typeErrors().isEmpty());      /// The parser error is not reported as a type error, but as a general error message in the result.error() field.
+        assertThrows(Throwable.class, () -> this.inferencer.infer("let $x := return"));
     }
 
     @Test
@@ -124,9 +116,7 @@ class TypeInferencerTest {
                 )
                 """;
 
-        TypeInferencer.InferenceResult result = this.inferencer.infer(query);
-
-        assertNull(result.error());
+        TypeInferencer.Result result = inferWithoutThrow(query);
         assertTrue(result.typeErrors().isEmpty());
 
         Set<String> xTypes = result.variableTypes()
@@ -149,9 +139,7 @@ class TypeInferencerTest {
                 local:f()
                 """;
 
-        TypeInferencer.InferenceResult result = this.inferencer.infer(query);
-
-        assertNotNull(result.error());
+        TypeInferencer.Result result = inferWithoutThrow(query);
         assertFalse(result.typeErrors().isEmpty());
         assertFalse(result.functionTypes().isEmpty());
 
@@ -170,9 +158,7 @@ class TypeInferencerTest {
                 local:f((1, 2), 3)
                 """;
 
-        TypeInferencer.InferenceResult result = this.inferencer.infer(query);
-
-        assertNotNull(result.error());
+        TypeInferencer.Result result = inferWithoutThrow(query);
         assertFalse(result.typeErrors().isEmpty());
 
         TypeInferencer.TypeError error = result.typeErrors().get(0);

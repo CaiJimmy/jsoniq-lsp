@@ -21,14 +21,16 @@ import org.rumbledb.types.SequenceType;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public final class TypeInferencer {
+public final class TypeInferencer implements RequestHandler{
     public static final Comparator<Position> POSITION_COMPARATOR = Comparator
             .comparingInt(Position::line)
             .thenComparingInt(Position::character);
@@ -98,12 +100,14 @@ public final class TypeInferencer {
             Position position) {
     }
 
-    public record InferenceResult(
+    public record Result(
             List<VariableType> variableTypes,
             List<FunctionType> functionTypes,
-            List<TypeError> typeErrors,
-            String error) {
+            List<TypeError> typeErrors
+    ) implements ResponseBody {
     }
+
+    public final static Result EMPTY_RESULT = new Result(List.of(), List.of(), List.of());
 
     private final RumbleRuntimeConfiguration permissiveConfiguration;
     private final RumbleRuntimeConfiguration strictConfiguration;
@@ -126,15 +130,14 @@ public final class TypeInferencer {
         this.strictConfiguration = new RumbleRuntimeConfiguration(withStaticTyping);
     }
 
-    public InferenceResult infer(String query) {
+    public Result infer(String query) {
         if (query == null || query.isEmpty()) {
-            return new InferenceResult(List.of(), List.of(), List.of(), null);
+            return EMPTY_RESULT;
         }
 
         List<VariableType> variableTypes = new ArrayList<>();
         List<FunctionType> functionTypes = new ArrayList<>();
         List<TypeError> typeErrors = new ArrayList<>();
-        String errorMessage = null;
 
         try {
             MainModule module = VisitorHelpers.parseMainModuleFromQuery(query, this.permissiveConfiguration);
@@ -146,7 +149,6 @@ public final class TypeInferencer {
             /// expect here are parsing errors
             /// We already have parsing error report from Typescript parser, so we don't
             /// need these information
-            errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
         }
 
         /// Parse with strict configuration to collect type errors, if any.
@@ -154,16 +156,9 @@ public final class TypeInferencer {
             VisitorHelpers.parseMainModuleFromQuery(query, this.strictConfiguration);
         } catch (UnexpectedStaticTypeException exception) {
             typeErrors.add(toTypeError(exception));
-            if (errorMessage == null) {
-                errorMessage = Objects.toString(exception.getMessage(), exception.getClass().getName());
-            }
-        } catch (Throwable throwable) {
-            if (errorMessage == null) {
-                errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
-            }
         }
 
-        return new InferenceResult(variableTypes, functionTypes, typeErrors, errorMessage);
+        return new Result(variableTypes, functionTypes, typeErrors);
     }
 
     private static TypeError toTypeError(UnexpectedStaticTypeException exception) {
@@ -394,5 +389,16 @@ public final class TypeInferencer {
         } catch (Throwable ignored) {
             return false;
         }
+    }
+
+    @Override
+    public ResponseBody handle(Request request) {
+        if (request.body() == null) {
+            throw new IllegalArgumentException("Request body is null.");
+        }
+        
+        byte[] decodedBytes = Base64.getDecoder().decode(request.body());
+        String query = new String(decodedBytes, StandardCharsets.UTF_8);
+        return infer(query);
     }
 }

@@ -18,7 +18,7 @@ class BuiltinFunctionsTest {
 
     @Test
     void listBuiltinFunctionsContainsCountArityOneSignature() {
-        Optional<BuiltinFunctions.BuiltinFunctionSignature> count = Optional
+        Optional<BuiltinFunctions.Signature> count = Optional
                 .ofNullable(this.builtinFunctions.byNameWithArity().get("fn:count#1"));
 
         assertTrue(count.isPresent());

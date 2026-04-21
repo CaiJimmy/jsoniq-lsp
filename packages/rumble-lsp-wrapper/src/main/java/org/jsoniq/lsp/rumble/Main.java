@@ -8,11 +8,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
 
 public class Main {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -20,50 +17,19 @@ public class Main {
     private static final BuiltinFunctions BUILTIN_FUNCTIONS = new BuiltinFunctions();
     private static final String REQUEST_TYPE_INFER_TYPES = "inferTypes";
     private static final String REQUEST_TYPE_BUILTIN_FUNCTIONS = "builtinFunctions";
-    private static final QueryResponseBody EMPTY_QUERY_RESPONSE_BODY = new QueryResponseBody(List.of(), List.of(),
-            List.of());
-    private static final BuiltInFunctionListResponseBody EMPTY_BUILTIN_RESPONSE_BODY = new BuiltInFunctionListResponseBody(
-            Map.of());
-    private static final Map<String, Function<WrapperRequest, WrapperDaemonResponse>> DAEMON_HANDLERS = Map.of(
-            REQUEST_TYPE_INFER_TYPES, Main::handleInferTypesRequest,
-            REQUEST_TYPE_BUILTIN_FUNCTIONS, Main::handleBuiltinFunctionsRequest);
+
+    private static final Map<String, RequestHandler> DAEMON_HANDLERS = Map.of(
+            REQUEST_TYPE_INFER_TYPES, INFERENCER,
+            REQUEST_TYPE_BUILTIN_FUNCTIONS, BUILTIN_FUNCTIONS);
 
     private record WrapperResponse(
-            List<TypeInferencer.VariableType> variableTypes,
-            List<TypeInferencer.FunctionType> functionTypes,
-            Map<String, BuiltinFunctions.BuiltinFunctionSignature> builtinFunctions,
+            long id,
+            String responseType,
+            ResponseBody body,
             String error) {
     }
 
-    private record WrapperRequest(long id, String requestType, String body) {
-    }
-
-    private interface WrapperDaemonResponse {
-    }
-
-    private record QueryResponseBody(
-            List<TypeInferencer.VariableType> variableTypes,
-            List<TypeInferencer.FunctionType> functionTypes,
-            List<TypeInferencer.TypeError> typeErrors) {
-    }
-
-    private record BuiltInFunctionListResponseBody(
-            Map<String, BuiltinFunctions.BuiltinFunctionSignature> builtinFunctions) {
-    }
-
-    private record QueryResponse(
-            long id,
-            String responseType,
-            QueryResponseBody body,
-            String error) implements WrapperDaemonResponse {
-    }
-
-    private record BuiltInFunctionListResponse(
-            long id,
-            String responseType,
-            BuiltInFunctionListResponseBody body,
-            String error) implements WrapperDaemonResponse {
-    }
+    private static long requestIdCounter = 0;
 
     public static void main(String[] args) {
         if (isDaemonMode(args)) {
@@ -73,12 +39,20 @@ public class Main {
 
         try {
             String query = readAllStdin();
-            TypeInferencer.InferenceResult result = INFERENCER.infer(query);
-            writeAndExit(new WrapperResponse(result.variableTypes(), result.functionTypes(), Map.of(), result.error()),
+            TypeInferencer.Result result = INFERENCER.infer(query);
+            writeAndExit(new WrapperResponse(
+                    requestIdCounter++,
+                    REQUEST_TYPE_INFER_TYPES,
+                    result,
+                    null),
                     0);
         } catch (Throwable throwable) {
             String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
-            writeAndExit(new WrapperResponse(List.of(), List.of(), Map.of(), errorMessage), 1);
+            writeAndExit(new WrapperResponse(
+                    requestIdCounter++,
+                    REQUEST_TYPE_INFER_TYPES,
+                    null,
+                    errorMessage), 1);
         }
     }
 
@@ -100,7 +74,7 @@ public class Main {
                 if (line.isBlank()) {
                     continue;
                 }
-                WrapperDaemonResponse response = processDaemonRequest(line);
+                WrapperResponse response = processDaemonRequest(line);
                 writer.println(OBJECT_MAPPER.writeValueAsString(response));
                 writer.flush();
             }
@@ -110,73 +84,26 @@ public class Main {
         }
     }
 
-    private static WrapperDaemonResponse processDaemonRequest(String requestLine) {
+    private static WrapperResponse processDaemonRequest(String requestLine) {
         long requestId = -1L;
         String requestType = REQUEST_TYPE_INFER_TYPES;
         try {
-            WrapperRequest request = OBJECT_MAPPER.readValue(requestLine, WrapperRequest.class);
+            Request request = OBJECT_MAPPER.readValue(requestLine, Request.class);
             requestId = request.id();
-            requestType = normalizeRequestType(request.requestType());
+            requestType = request.requestType();
 
-            Function<WrapperRequest, WrapperDaemonResponse> handler = DAEMON_HANDLERS.get(requestType);
+            RequestHandler handler = DAEMON_HANDLERS.get(requestType);
             if (handler == null) {
-                return queryErrorResponse(requestId, "Unsupported requestType '" + requestType + "'.");
+                return new WrapperResponse(requestId, requestType, null,
+                        "Unsupported requestType '" + requestType + "'.");
             }
 
-            return handler.apply(new WrapperRequest(requestId, requestType, request.body()));
+            return new WrapperResponse(requestId, requestLine,
+                    handler.handle(new Request(requestId, requestType, request.body())), null);
         } catch (Throwable throwable) {
             String errorMessage = Objects.toString(throwable.getMessage(), throwable.getClass().getName());
-            return errorResponseFor(requestId, requestType, errorMessage);
+            return new WrapperResponse(requestId, requestType, null, errorMessage);
         }
-    }
-
-    private static WrapperDaemonResponse handleInferTypesRequest(WrapperRequest request) {
-        if (request.body() == null) {
-            return queryErrorResponse(request.id(), "Missing body field.");
-        }
-
-        byte[] decodedBytes = Base64.getDecoder().decode(request.body());
-        String query = new String(decodedBytes, StandardCharsets.UTF_8);
-        TypeInferencer.InferenceResult result = INFERENCER.infer(query);
-        return new QueryResponse(request.id(), REQUEST_TYPE_INFER_TYPES,
-                new QueryResponseBody(result.variableTypes(), result.functionTypes(), result.typeErrors()),
-                result.error());
-    }
-
-    private static WrapperDaemonResponse handleBuiltinFunctionsRequest(WrapperRequest request) {
-        Map<String, BuiltinFunctions.BuiltinFunctionSignature> builtinFunctions = BUILTIN_FUNCTIONS.byNameWithArity();
-        return new BuiltInFunctionListResponse(
-                request.id(),
-                REQUEST_TYPE_BUILTIN_FUNCTIONS,
-                new BuiltInFunctionListResponseBody(builtinFunctions),
-                null);
-    }
-
-    private static String normalizeRequestType(String requestType) {
-        if (requestType == null || requestType.isBlank()) {
-            return REQUEST_TYPE_INFER_TYPES;
-        }
-        return requestType;
-    }
-
-    private static WrapperDaemonResponse queryErrorResponse(long requestId, String errorMessage) {
-        return new QueryResponse(requestId, REQUEST_TYPE_INFER_TYPES, EMPTY_QUERY_RESPONSE_BODY, errorMessage);
-    }
-
-    private static WrapperDaemonResponse errorResponseFor(long requestId, String requestType, String errorMessage) {
-        if (REQUEST_TYPE_BUILTIN_FUNCTIONS.equals(requestType)) {
-            return new BuiltInFunctionListResponse(
-                    requestId,
-                    REQUEST_TYPE_BUILTIN_FUNCTIONS,
-                    EMPTY_BUILTIN_RESPONSE_BODY,
-                    errorMessage);
-        }
-
-        return new QueryResponse(
-                requestId,
-                REQUEST_TYPE_INFER_TYPES,
-                EMPTY_QUERY_RESPONSE_BODY,
-                errorMessage);
     }
 
     private static String readAllStdin() throws IOException {

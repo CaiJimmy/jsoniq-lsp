@@ -11,15 +11,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class BuiltinFunctions {
-    public record BuiltinFunctionSignature(
+public class BuiltinFunctions implements RequestHandler{
+    public record Signature(
             List<String> parameterTypes,
             String returnType) {
     }
 
-    public Map<String, BuiltinFunctionSignature> byNameWithArity() {
+    public record Result(
+            Map<String, Signature> builtinFunctions) implements ResponseBody {
+    }
+
+    public static final Result EMPTY_RESPONSE_BODY = new Result(Map.of());
+
+    public Map<String, Signature> byNameWithArity() {
         Map<FunctionIdentifier, BuiltinFunction> functions = readCatalogue();
-        Map<String, BuiltinFunctionSignature> signatures = new TreeMap<>();
+        Map<String, Signature> signatures = new TreeMap<>();
 
         for (Map.Entry<FunctionIdentifier, BuiltinFunction> entry : functions.entrySet()) {
             BuiltinFunction function = entry.getValue();
@@ -44,7 +50,7 @@ public class BuiltinFunctions {
         }
     }
 
-    private static BuiltinFunctionSignature toSignature(BuiltinFunction function) {
+    private static Signature toSignature(BuiltinFunction function) {
         FunctionSignature signature = function.getSignature();
 
         List<String> parameterTypes = signature
@@ -55,8 +61,13 @@ public class BuiltinFunctions {
 
         String returnType = signature.getReturnType() == null ? "item*" : signature.getReturnType().toString();
 
-        return new BuiltinFunctionSignature(
+        return new Signature(
                 parameterTypes,
                 returnType);
+    }
+
+    @Override
+    public ResponseBody handle(Request request) {
+        return new Result(byNameWithArity());
     }
 }
