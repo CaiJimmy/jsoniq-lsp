@@ -54,8 +54,6 @@ describe("RumbleWrapperConnection (integration)", () => {
 
         const response = await connection.inferTypes(query);
 
-        console.log("Received response:", JSON.stringify(response, null, 2));
-
         expect(response.error).toBeNull();
         const declaredVariable = response.body.variableTypes.find(
             (type) => type.kind === "declare-variable" && type.name === "a",
