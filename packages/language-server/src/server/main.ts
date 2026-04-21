@@ -17,6 +17,7 @@ import { buildRenameWorkspaceEdit, prepareRename } from "./rename.js";
 import { findHover } from "./hover.js";
 import { findCompletions } from "./completion.js";
 import { initializeBuiltinFunctionDefinitions } from "./builtin-definitions.js";
+import { clearTypeInferenceCache } from "./type-inference.js";
 import { collectTypeDiagnostics } from "./type-diagnostics.js";
 
 const connection = createConnection(ProposedFeatures.all);
@@ -164,6 +165,7 @@ documents.onDidChangeContent(async (event) => {
 });
 
 documents.onDidClose((event) => {
+    clearTypeInferenceCache(event.document.uri);
     connection.sendDiagnostics({
         uri: event.document.uri,
         diagnostics: [],
