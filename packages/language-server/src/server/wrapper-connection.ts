@@ -5,6 +5,20 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { VariableKind } from "./analysis.js";
 
+export const WRAPPER_JAR_ENV_VARIABLE = "JSONIQ_RUMBLE_WRAPPER_JAR";
+
+export const WRAPPER_JAR_NAME_PREFIX = "rumble-lsp-wrapper";
+
+export const WRAPPER_JAR_PRODUCTION_FOLDER = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../../wrapper"
+);
+
+export const WRAPPER_JAR_DEVELOPMENT_FOLDER = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../../../rumble-lsp-wrapper/target"
+);
+
 export interface WrapperVariableType {
     name: string;
     type: string;
@@ -201,6 +215,8 @@ export class RumbleWrapperConnection {
         }
 
         const launchConfig = resolveWrapperLaunchConfig();
+        console.log(`Launching wrapper with args: ${launchConfig.args.join(" ")}`);
+
         this.child = spawn("java", launchConfig.args, {
             stdio: "pipe",
         });
@@ -288,42 +304,48 @@ export class RumbleWrapperConnection {
 }
 
 function resolveWrapperLaunchConfig(): WrapperLaunchConfig {
-    const configuredJarPath = process.env.JSONIQ_RUMBLE_WRAPPER_JAR;
+    /// 1. Check for explicitly configured wrapper jar path via environment variable.
+    const configuredJarPath = process.env[WRAPPER_JAR_ENV_VARIABLE];
     if (configuredJarPath !== undefined && configuredJarPath.length > 0) {
         return {
             args: ["-jar", configuredJarPath, "--daemon"],
         };
     }
 
-    const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
-    const wrapperTargetDirectory = path.resolve(
-        moduleDirectory,
-        "../../../rumble-lsp-wrapper/target",
-    );
-
-    const wrapperJarPath = path.resolve(wrapperTargetDirectory, "rumble-lsp-wrapper-0.1.0.jar");
-    const runtimeClasspathPath = path.resolve(wrapperTargetDirectory, "runtime-classpath.txt");
-
-    if (!fs.existsSync(runtimeClasspathPath)) {
+    /// 2. In the development environment, the wrapper jar is expected to be built by the user and available in the target directory.
+    if (process.env.NODE_ENV === "development") {
+        const jarPath = pickLatestJarFromDirectory(WRAPPER_JAR_DEVELOPMENT_FOLDER);
         return {
-            args: ["-jar", wrapperJarPath, "--daemon"],
+            args: ["-jar", jarPath, "--daemon"],
         };
     }
+    else {
+        /// In production environment, the wrapper jar should be copied to ./dist/wrapper folder
+        const jarPath = pickLatestJarFromDirectory(WRAPPER_JAR_PRODUCTION_FOLDER);
 
-    const runtimeClasspath = fs.readFileSync(runtimeClasspathPath, "utf8").trim();
-    const completeClasspath = runtimeClasspath.length > 0
-        ? `${wrapperJarPath}${path.delimiter}${runtimeClasspath}`
-        : wrapperJarPath;
-
-    return {
-        args: [
-            "-cp",
-            completeClasspath,
-            "org.jsoniq.lsp.rumble.Main",
-            "--daemon",
-        ],
+        return {
+            args: ["-jar", jarPath, "--daemon"],
+        };
     };
 }
+
+function pickLatestJarFromDirectory(directory: string): string {
+    /// Try to pick the latest wrapper jar from the target directory, prioritizing non-all jar for development
+    const files = fs.readdirSync(directory);
+    const wrapperJars = files.filter((file) => file.startsWith(WRAPPER_JAR_NAME_PREFIX) && file.endsWith(".jar"))
+        .map((file) => path.join(directory, file))
+        .sort(
+            (a, b) => {
+                return fs.statSync(b).mtime.getTime() - fs.statSync(a).mtime.getTime();
+            }
+        )
+
+    if (wrapperJars.length === 0) {
+        console.warn(`No wrapper jar found in directory '${directory}'.`);
+    }
+    return wrapperJars[0]!;
+};
+
 
 export const connection = new RumbleWrapperConnection();
 
