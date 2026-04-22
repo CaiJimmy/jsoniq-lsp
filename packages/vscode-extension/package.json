@@ -45,6 +45,7 @@
         "watch": "tsc -w -p tsconfig.json"
     },
     "dependencies": {
+        "@jsoniq-lsp/language-server": "workspace:*",
         "vscode-languageclient": "^9.0.1"
     },
     "devDependencies": {
