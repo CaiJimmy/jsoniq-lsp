@@ -113,6 +113,10 @@ export class RumbleWrapperConnection {
     private stdoutBuffer = "";
     private readonly pending = new Map<number, PendingRequest>();
 
+    public constructor() {
+        this.ensureProcess();
+    }
+
     public async inferTypes(query: string): Promise<QueryResponse> {
         const body = Buffer.from(query, "utf8").toString("base64");
         return this.sendRequest<"inferTypes">({
