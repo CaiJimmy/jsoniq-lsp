@@ -232,10 +232,17 @@ class RumbleWrapperClient {
     }
 }
 
-// Singleton instance of the wrapper client used across the language server.
-export const wrapperClient = new RumbleWrapperClient();
+let instance: RumbleWrapperClient | null = null;
+
+export function getWrapperClient(): RumbleWrapperClient {
+    if (instance === null) {
+        instance = new RumbleWrapperClient();
+    }
+    return instance;
+}
 
 process.on("exit", () => {
-    /// Ensure the wrapper process is killed when the main process exits.
-    wrapperClient.dispose();
+    if (instance !== null) {
+        instance.dispose();
+    }
 });

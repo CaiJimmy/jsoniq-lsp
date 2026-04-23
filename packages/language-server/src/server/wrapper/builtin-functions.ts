@@ -1,6 +1,6 @@
 import type { BaseDefinition } from "../analysis.js";
 import type { WrapperDaemonResponse } from "./protocol.js";
-import { wrapperClient } from "./client.js";
+import { getWrapperClient } from "./client.js";
 
 export interface WrapperBuiltinFunctionSignature {
     parameterTypes: string[];
@@ -44,7 +44,7 @@ export async function initializeBuiltinFunctionDefinitions(): Promise<void> {
     }
 
     initializationPromise = (async () => {
-        const response = await wrapperClient.sendRequest<"builtinFunctions">({
+        const response = await getWrapperClient().sendRequest<"builtinFunctions">({
             requestType: "builtinFunctions",
         }, FALLBACK_BUILTIN_FUNCTIONS_RESPONSE);
         if (response.error !== null) {

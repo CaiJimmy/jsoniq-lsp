@@ -2,7 +2,7 @@ import type { DocumentUri, Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type { WrapperDaemonResponse } from "./protocol.js";
-import { wrapperClient } from "./client.js";
+import { getWrapperClient } from "./client.js";
 
 export type WrapperVariableKind =
     | "declare-variable"
@@ -89,7 +89,7 @@ export async function getTypeInference(document: TextDocument): Promise<TypeInfe
 
     const body = Buffer.from(document.getText(), "utf8").toString("base64");
 
-    const inferencePromise = wrapperClient.sendRequest<"inferTypes">({
+    const inferencePromise = getWrapperClient().sendRequest<"inferTypes">({
         requestType: "inferTypes",
         body,
     }, FALLBACK_TYPE_INFERENCE_RESPONSE).then((response) => {
