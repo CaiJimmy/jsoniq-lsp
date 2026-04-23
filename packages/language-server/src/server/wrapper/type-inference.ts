@@ -3,6 +3,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type { WrapperDaemonResponse } from "./protocol.js";
 import { getWrapperClient } from "./client.js";
+import { createLogger } from "../utils/logger.js";
 
 export type WrapperVariableKind =
     | "declare-variable"
@@ -76,6 +77,8 @@ const FALLBACK_TYPE_INFERENCE_RESPONSE: TypeInferenceResponse = {
     error: "Wrapper request failed.",
 };
 
+const logger = createLogger("type-inference");
+
 export async function getTypeInference(document: TextDocument): Promise<TypeInferenceResponse> {
     const cached = typeInferenceCache.get(document.uri);
     if (cached !== undefined && cached.version === document.version) {
@@ -99,9 +102,8 @@ export async function getTypeInference(document: TextDocument): Promise<TypeInfe
         });
         pendingInferenceByUri.delete(document.uri);
 
-        // DO NOT REMOVE
-        console.log(`Type inference completed for ${document.uri} (version ${document.version})`);
-        console.log(JSON.stringify(response, null, 2));
+        logger.debug(`Type inference completed for ${document.uri} (version ${document.version})`);
+        logger.debug(JSON.stringify(response, null, 2));
         return response;
     })
         .catch(() => {

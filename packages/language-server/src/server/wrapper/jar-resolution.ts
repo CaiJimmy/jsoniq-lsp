@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createLogger } from "../utils/logger.js";
 
 export const WRAPPER_JAR_ENV_VARIABLE = "JSONIQ_RUMBLE_WRAPPER_JAR";
 
@@ -18,6 +19,7 @@ export const WRAPPER_JAR_DEVELOPMENT_FOLDER = path.resolve(
 
 export const WRAPPER_RUNTIME_CLASSPATH_FILE = "runtime-classpath.txt";
 export const WRAPPER_MAIN_CLASS = "org.jsoniq.lsp.rumble.Main";
+const logger = createLogger("wrapper:jar-resolution");
 
 export interface WrapperLaunchConfig {
     args: string[];
@@ -68,7 +70,7 @@ function pickLatestJarFromDirectory(
     },
 ): string | undefined {
     if (!fs.existsSync(directory)) {
-        console.warn(`Wrapper jar directory does not exist: '${directory}'.`);
+        logger.warn(`Wrapper jar directory does not exist: '${directory}'.`);
         return undefined;
     }
 
@@ -93,7 +95,7 @@ function pickLatestJarFromDirectory(
     }
 
     if (wrapperJars.length === 0) {
-        console.warn(`No wrapper jar found in directory '${directory}'.`);
+        logger.warn(`No wrapper jar found in directory '${directory}'.`);
     }
 
     return wrapperJars[0];

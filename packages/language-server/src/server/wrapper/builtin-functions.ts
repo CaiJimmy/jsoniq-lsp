@@ -1,4 +1,5 @@
 import type { BaseDefinition } from "../analysis.js";
+import { createLogger } from "../utils/logger.js";
 import type { WrapperDaemonResponse } from "./protocol.js";
 import { getWrapperClient } from "./client.js";
 
@@ -28,6 +29,7 @@ export interface BuiltinFunctionDefinition extends BaseDefinition {
 
 const builtinDefinitionsByName = new Map<string, BuiltinFunctionDefinition>();
 let initializationPromise: Promise<void> | null = null;
+const logger = createLogger("wrapper:builtin-functions");
 
 export async function initializeBuiltinFunctionDefinitions(): Promise<void> {
     if (initializationPromise !== null) {
@@ -38,7 +40,7 @@ export async function initializeBuiltinFunctionDefinitions(): Promise<void> {
         const response = await getWrapperClient().sendRequest<"builtinFunctions">({
             requestType: "builtinFunctions",
         }).catch((error) => {
-            console.warn(`Failed to fetch builtin function definitions from wrapper: ${String(error)}`);
+            logger.warn(`Failed to fetch builtin function definitions from wrapper: ${String(error)}`);
             return;
         });
 

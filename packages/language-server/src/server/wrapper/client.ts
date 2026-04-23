@@ -1,5 +1,6 @@
 import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 
+import { createLogger } from "../utils/logger.js";
 import { resolveWrapperLaunchConfig } from "./jar-resolution.js";
 import { REQUEST_TYPE_HANDSHAKE } from "./handshake.js";
 import type {
@@ -15,6 +16,7 @@ type ResponseByType = {
 };
 
 type AnyWrapperResponse = ResponseByType[WrapperRequestType];
+const logger = createLogger("wrapper:client");
 
 interface PendingRequest {
     expectedResponseType: WrapperRequestType;
@@ -52,7 +54,7 @@ class RumbleWrapperClient {
     private async startAndHandshake(): Promise<void> {
         if (this.child === undefined) {
             const launchConfig = resolveWrapperLaunchConfig();
-            console.log(`Launching wrapper with args: ${launchConfig.args.join(" ")}`);
+            logger.info(`Launching wrapper with args: ${launchConfig.args.join(" ")}`);
 
             this.child = spawn("java", launchConfig.args, {
                 stdio: "pipe",
@@ -65,7 +67,7 @@ class RumbleWrapperClient {
             });
 
             this.child.on("error", (error) => {
-                console.error("Wrapper process error:", error);
+                logger.error("Wrapper process error:", error);
                 this.rejectAllPending(error);
                 this.child = undefined;
                 this.stdoutBuffer = "";
@@ -73,7 +75,7 @@ class RumbleWrapperClient {
             });
 
             this.child.on("close", () => {
-                console.warn("Wrapper process closed.");
+                logger.warn("Wrapper process closed.");
                 this.rejectAllPending(new Error("Wrapper process closed."));
                 this.child = undefined;
                 this.stdoutBuffer = "";
