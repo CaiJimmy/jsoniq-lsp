@@ -6,8 +6,8 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { getTypeInference } from "./type-inference.js";
-import { type WrapperTypeError } from "./wrapper-connection.js";
+import { getTypeInference } from "./wrapper/type-inference.js";
+import { type WrapperTypeError } from "./wrapper/protocol.js";
 
 export async function collectTypeDiagnostics(document: TextDocument): Promise<Diagnostic[]> {
     const response = await getTypeInference(document);
@@ -17,7 +17,7 @@ export async function collectTypeDiagnostics(document: TextDocument): Promise<Di
 
     return response.body.typeErrors
         .map((error) => toDiagnostic(document, error));
-} ``
+}
 
 function toDiagnostic(document: TextDocument, error: WrapperTypeError): Diagnostic {
     const diagnosticRange = createRangeFromStartPosition(document, error, error.position)

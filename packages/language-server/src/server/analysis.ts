@@ -29,9 +29,9 @@ import { rangeFromNode } from "./utils/range.js";
 import { isNewScopeNode } from "./utils/scope.js";
 import { comparePositions } from "./utils/position.js";
 import { functionName, functionNameWithArityOrNull, varRefNameOrNull } from "./utils/name.js";
-import { findBuiltinFunctionDefinition, type BuiltinFunctionDefinition } from "./builtin-definitions.js";
-import { QueryResponseBody } from "./wrapper-connection.js";
-import { getTypeInference } from "./type-inference.js";
+import { findBuiltinFunctionDefinition, type BuiltinFunctionDefinition } from "./wrapper/builtin-functions.js";
+import { type QueryResponseBody } from "./wrapper/protocol.js";
+import { getTypeInference } from "./wrapper/type-inference.js";
 
 export type VariableKind =
     | "declare-variable"

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { RumbleWrapperConnection } from "../src/server/wrapper-connection.js";
+import { RumbleWrapperClient } from "../src/server/wrapper/client";
 
-let connection: RumbleWrapperConnection;
+let connection: RumbleWrapperClient;
 
 describe("RumbleWrapperConnection (integration)", () => {
     afterEach(() => {
@@ -12,7 +12,7 @@ describe("RumbleWrapperConnection (integration)", () => {
     });
 
     it("connects to Java wrapper and returns inferred variable and function types", async () => {
-        connection = new RumbleWrapperConnection();
+        connection = new RumbleWrapperClient();
 
         const query = [
             "declare function local:f($a as integer, $b) {",
@@ -41,7 +41,7 @@ describe("RumbleWrapperConnection (integration)", () => {
     }, 60_000);
 
     it("returns declared variable types from prolog declarations", async () => {
-        connection = new RumbleWrapperConnection();
+        connection = new RumbleWrapperClient();
 
         const query = [
             "declare variable $a := (1, 2);",
@@ -60,7 +60,7 @@ describe("RumbleWrapperConnection (integration)", () => {
     }, 60_000);
 
     it("returns parse error for invalid query", async () => {
-        connection = new RumbleWrapperConnection();
+        connection = new RumbleWrapperClient();
 
         const response = await connection.inferTypes("let $x := return");
         expect(response.responseType).toBe("inferTypes");
@@ -70,7 +70,7 @@ describe("RumbleWrapperConnection (integration)", () => {
     }, 60_000);
 
     it("returns builtin function signatures", async () => {
-        connection = new RumbleWrapperConnection();
+        connection = new RumbleWrapperClient();
 
         const response = await connection.listBuiltinFunctions();
 

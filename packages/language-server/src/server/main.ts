@@ -16,10 +16,10 @@ import { findReferenceLocations } from "./references.js";
 import { buildRenameWorkspaceEdit, prepareRename } from "./rename.js";
 import { findHover } from "./hover.js";
 import { findCompletions } from "./completion.js";
-import { initializeBuiltinFunctionDefinitions } from "./builtin-definitions.js";
-import { clearTypeInferenceCache } from "./type-inference.js";
+import { initializeBuiltinFunctionDefinitions } from "./wrapper/builtin-functions.js";
+import { clearTypeInferenceCache } from "./wrapper/type-inference.js";
 import { collectTypeDiagnostics } from "./type-diagnostics.js";
-import { connection as wrapperConnection } from "./wrapper-connection.js";
+import { wrapperClient } from "./wrapper/client.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -50,7 +50,7 @@ async function refreshDiagnostics(uri: string): Promise<void> {
 }
 
 connection.onInitialize(async (_params: InitializeParams): Promise<InitializeResult> => {
-    wrapperConnection.ensureProcess();
+    wrapperClient.ensureProcess();
     await initializeBuiltinFunctionDefinitions();
 
     return {

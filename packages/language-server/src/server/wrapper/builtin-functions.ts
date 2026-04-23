@@ -1,5 +1,6 @@
-import { BaseDefinition } from "./analysis.js";
-import { connection, type WrapperBuiltinFunctionSignature } from "./wrapper-connection.js";
+import type { BaseDefinition } from "../analysis.js";
+import { wrapperClient } from "./client.js";
+import { type WrapperBuiltinFunctionSignature } from "./protocol.js";
 
 export interface BuiltinFunctionDefinition extends BaseDefinition {
     name: string;
@@ -18,7 +19,7 @@ export async function initializeBuiltinFunctionDefinitions(): Promise<void> {
     }
 
     initializationPromise = (async () => {
-        const response = await connection.listBuiltinFunctions();
+        const response = await wrapperClient.listBuiltinFunctions();
         if (response.error !== null) {
             return;
         }
