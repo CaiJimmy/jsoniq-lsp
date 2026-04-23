@@ -1,10 +1,10 @@
-import type { BuiltinFunctionsRequestPayload, REQUEST_TYPE_BUILTIN_FUNCTIONS } from "./builtin-functions.js";
-import type { InferTypesRequestPayload, REQUEST_TYPE_INFER_TYPES } from "./type-inference.js";
+import type { BuiltInFunctionListResponseBody, BuiltinFunctionsRequestPayload, REQUEST_TYPE_BUILTIN_FUNCTIONS } from "./builtin-functions.js";
+import type { InferTypesRequestPayload, REQUEST_TYPE_INFER_TYPES, TypeInferenceResult } from "./type-inference.js";
 
-export interface WrapperRequestPayloadByType {
+export type WrapperRequestPayloadByType = {
     [REQUEST_TYPE_INFER_TYPES]: InferTypesRequestPayload;
     [REQUEST_TYPE_BUILTIN_FUNCTIONS]: BuiltinFunctionsRequestPayload;
-}
+};
 
 export type WrapperRequestType = keyof WrapperRequestPayloadByType;
 
@@ -27,3 +27,8 @@ export type WrapperDaemonResponse<
     body: ResponseBody;
     error: string | null;
 };
+
+export type WrapperResponseBodyByType = {
+    [REQUEST_TYPE_INFER_TYPES]: TypeInferenceResult;
+    [REQUEST_TYPE_BUILTIN_FUNCTIONS]: BuiltInFunctionListResponseBody;
+}

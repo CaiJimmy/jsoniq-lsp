@@ -6,14 +6,8 @@ import type {
     WrapperDaemonRequest,
     WrapperDaemonResponse,
     WrapperRequestType,
+    WrapperResponseBodyByType,
 } from "./protocol.js";
-import type { TypeInferenceResponse, TypeInferenceResult } from "./type-inference.js";
-import type { BuiltinFunctionListResponse, BuiltInFunctionListResponseBody } from "./builtin-functions.js";
-
-interface WrapperResponseBodyByType {
-    inferTypes: TypeInferenceResult;
-    builtinFunctions: BuiltInFunctionListResponseBody;
-}
 
 type ResponseByType = {
     [RequestType in WrapperRequestType]: WrapperDaemonResponse<RequestType, WrapperResponseBodyByType[RequestType]>;
@@ -34,37 +28,6 @@ export class RumbleWrapperClient {
     private nextRequestId = 1;
     private stdoutBuffer = "";
     private readonly pending = new Map<number, PendingRequest>();
-
-    public async inferTypes(query: string): Promise<TypeInferenceResponse> {
-        const body = Buffer.from(query, "utf8").toString("base64");
-
-        return this.sendRequest<"inferTypes">({
-            requestType: "inferTypes",
-            body,
-        }, {
-            id: -1,
-            responseType: "inferTypes",
-            body: {
-                variableTypes: [],
-                functionTypes: [],
-                typeErrors: [],
-            },
-            error: "Wrapper request failed.",
-        });
-    }
-
-    public async listBuiltinFunctions(): Promise<BuiltinFunctionListResponse> {
-        return this.sendRequest<"builtinFunctions">({
-            requestType: "builtinFunctions",
-        }, {
-            id: -1,
-            responseType: "builtinFunctions",
-            body: {
-                builtinFunctions: {},
-            },
-            error: "Wrapper request failed.",
-        });
-    }
 
     public ensureProcess(): void {
         if (this.child !== undefined) {
@@ -109,7 +72,7 @@ export class RumbleWrapperClient {
         }
     }
 
-    private async sendRequest<RequestType extends WrapperRequestType>(
+    async sendRequest<RequestType extends WrapperRequestType>(
         requestPayload: RequestPayloadByType[RequestType],
         fallbackResponse: ResponseByType[RequestType],
     ): Promise<ResponseByType[RequestType]> {

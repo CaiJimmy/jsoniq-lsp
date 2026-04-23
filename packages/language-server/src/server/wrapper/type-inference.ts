@@ -65,6 +65,17 @@ export function clearTypeInferenceCache(uri: DocumentUri): void {
     pendingInferenceByUri.delete(uri);
 }
 
+const FALLBACK_TYPE_INFERENCE_RESPONSE: TypeInferenceResponse = {
+    id: -1,
+    responseType: REQUEST_TYPE_INFER_TYPES,
+    body: {
+        variableTypes: [],
+        functionTypes: [],
+        typeErrors: [],
+    },
+    error: "Wrapper request failed.",
+};
+
 export async function getTypeInference(document: TextDocument): Promise<TypeInferenceResponse> {
     const cached = typeInferenceCache.get(document.uri);
     if (cached !== undefined && cached.version === document.version) {
@@ -76,31 +87,26 @@ export async function getTypeInference(document: TextDocument): Promise<TypeInfe
         return pending;
     }
 
-    const inferencePromise = wrapperClient.inferTypes(document.getText())
-        .then((response) => {
-            typeInferenceCache.set(document.uri, {
-                version: document.version,
-                response,
-            });
-            pendingInferenceByUri.delete(document.uri);
+    const body = Buffer.from(document.getText(), "utf8").toString("base64");
 
-            // DO NOT REMOVE
-            console.log(`Type inference completed for ${document.uri} (version ${document.version})`);
-            console.log(JSON.stringify(response, null, 2));
-            return response;
-        })
+    const inferencePromise = wrapperClient.sendRequest<"inferTypes">({
+        requestType: "inferTypes",
+        body,
+    }, FALLBACK_TYPE_INFERENCE_RESPONSE).then((response) => {
+        typeInferenceCache.set(document.uri, {
+            version: document.version,
+            response,
+        });
+        pendingInferenceByUri.delete(document.uri);
+
+        // DO NOT REMOVE
+        console.log(`Type inference completed for ${document.uri} (version ${document.version})`);
+        console.log(JSON.stringify(response, null, 2));
+        return response;
+    })
         .catch(() => {
             pendingInferenceByUri.delete(document.uri);
-            return {
-                id: -1,
-                responseType: "inferTypes",
-                body: {
-                    variableTypes: [],
-                    functionTypes: [],
-                    typeErrors: [],
-                },
-                error: "Wrapper request failed.",
-            } satisfies TypeInferenceResponse;
+            return FALLBACK_TYPE_INFERENCE_RESPONSE;
         });
 
     pendingInferenceByUri.set(document.uri, inferencePromise);
