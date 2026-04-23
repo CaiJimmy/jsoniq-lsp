@@ -92,7 +92,7 @@ export async function getTypeInference(document: TextDocument): Promise<TypeInfe
     const inferencePromise = getWrapperClient().sendRequest<"inferTypes">({
         requestType: "inferTypes",
         body,
-    }, FALLBACK_TYPE_INFERENCE_RESPONSE).then((response) => {
+    }).then((response) => {
         typeInferenceCache.set(document.uri, {
             version: document.version,
             response,

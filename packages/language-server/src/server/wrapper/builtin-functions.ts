@@ -29,15 +29,6 @@ export interface BuiltinFunctionDefinition extends BaseDefinition {
 const builtinDefinitionsByName = new Map<string, BuiltinFunctionDefinition>();
 let initializationPromise: Promise<void> | null = null;
 
-const FALLBACK_BUILTIN_FUNCTIONS_RESPONSE: BuiltinFunctionListResponse = {
-    id: -1,
-    responseType: REQUEST_TYPE_BUILTIN_FUNCTIONS,
-    body: {
-        builtinFunctions: {},
-    },
-    error: "Wrapper request failed.",
-};
-
 export async function initializeBuiltinFunctionDefinitions(): Promise<void> {
     if (initializationPromise !== null) {
         return initializationPromise;
@@ -46,8 +37,12 @@ export async function initializeBuiltinFunctionDefinitions(): Promise<void> {
     initializationPromise = (async () => {
         const response = await getWrapperClient().sendRequest<"builtinFunctions">({
             requestType: "builtinFunctions",
-        }, FALLBACK_BUILTIN_FUNCTIONS_RESPONSE);
-        if (response.error !== null) {
+        }).catch((error) => {
+            console.warn(`Failed to fetch builtin function definitions from wrapper: ${String(error)}`);
+            return;
+        });
+
+        if (response === undefined) {
             return;
         }
 

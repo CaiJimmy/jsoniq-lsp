@@ -1,7 +1,7 @@
 import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 
 import { resolveWrapperLaunchConfig } from "./jar-resolution.js";
-import { FALLBACK_HANDSHAKE_RESPONSE, REQUEST_TYPE_HANDSHAKE } from "./handshake.js";
+import { REQUEST_TYPE_HANDSHAKE } from "./handshake.js";
 import type {
     RequestPayloadByType,
     WrapperDaemonRequest,
@@ -18,7 +18,6 @@ type AnyWrapperResponse = ResponseByType[WrapperRequestType];
 
 interface PendingRequest {
     expectedResponseType: WrapperRequestType;
-    fallbackResponse: AnyWrapperResponse;
     resolve: (response: AnyWrapperResponse) => void;
     reject: (error: Error) => void;
     timeout: NodeJS.Timeout;
@@ -83,13 +82,9 @@ class RumbleWrapperClient {
             });
         }
 
-        const handshakeResponse = await this.sendRequest<typeof REQUEST_TYPE_HANDSHAKE>({
+        const handshakeResponse = await this.sendRequestInternal<typeof REQUEST_TYPE_HANDSHAKE>({
             requestType: REQUEST_TYPE_HANDSHAKE,
-        }, FALLBACK_HANDSHAKE_RESPONSE);
-
-        if (handshakeResponse.error !== null) {
-            throw new Error(handshakeResponse.error);
-        }
+        });
 
         this.rumbleVersion = handshakeResponse.body.rumbleVersion;
         this.handshakeCompleted = true;
@@ -111,25 +106,27 @@ class RumbleWrapperClient {
     }
 
     public async sendRequest<RequestType extends WrapperRequestType>(
-        requestPayload: RequestPayloadByType[RequestType],
-        fallbackResponse: ResponseByType[RequestType],
+        payload: RequestPayloadByType[RequestType]
+    ): Promise<ResponseByType[RequestType]> {
+        await this.ensureProcess();
+        return this.sendRequestInternal(payload);
+    }
+
+    private async sendRequestInternal<RequestType extends WrapperRequestType>(
+        payload: RequestPayloadByType[RequestType]
     ): Promise<ResponseByType[RequestType]> {
         const id = this.nextRequestId;
         this.nextRequestId += 1;
 
         const request: WrapperDaemonRequest<RequestType> = {
             id,
-            ...requestPayload,
+            ...payload,
         };
         const encodedRequest = JSON.stringify(request);
         const child = this.child;
 
         if (child === undefined) {
-            return {
-                ...fallbackResponse,
-                id,
-                error: "Wrapper process is not available.",
-            };
+            throw new Error("Wrapper process is not available.");
         }
 
         return new Promise<ResponseByType[RequestType]>((resolve, reject) => {
@@ -139,8 +136,7 @@ class RumbleWrapperClient {
             }, 12_000);
 
             this.pending.set(id, {
-                expectedResponseType: requestPayload.requestType,
-                fallbackResponse,
+                expectedResponseType: payload.requestType,
                 resolve: resolve as unknown as (response: AnyWrapperResponse) => void,
                 reject,
                 timeout,
@@ -155,11 +151,7 @@ class RumbleWrapperClient {
             } catch (error) {
                 this.rejectPending(id, error instanceof Error ? error : new Error("Wrapper write failed."));
             }
-        }).catch((error: unknown) => ({
-            ...fallbackResponse,
-            id,
-            error: error instanceof Error ? error.message : "Wrapper request failed.",
-        }) as ResponseByType[RequestType]);
+        });
     }
 
     private handleStdoutChunk(chunk: string): void {
@@ -197,11 +189,16 @@ class RumbleWrapperClient {
         this.pending.delete(response.id);
 
         if (response.responseType !== pendingRequest.expectedResponseType) {
-            pendingRequest.resolve({
-                ...pendingRequest.fallbackResponse,
-                id: response.id,
-                error: `Wrapper returned responseType '${response.responseType}' for requestType '${pendingRequest.expectedResponseType}'.`,
-            });
+            pendingRequest.reject(
+                new Error(
+                    `Wrapper returned responseType '${response.responseType}' for requestType '${pendingRequest.expectedResponseType}'.`,
+                ),
+            );
+            return;
+        }
+
+        if (response.error !== null) {
+            pendingRequest.reject(new Error(response.error));
             return;
         }
 
