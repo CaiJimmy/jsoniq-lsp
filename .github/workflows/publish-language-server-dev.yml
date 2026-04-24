@@ -1,9 +1,11 @@
 name: Publish Language Server (Dev) to GitHub Packages
 
 on:
-  push:
-    branches:
-      - "**"
+  workflow_run:
+    workflows:
+      - Run tests
+    types:
+      - completed
 
 permissions:
   contents: read
@@ -11,11 +13,15 @@ permissions:
 
 jobs:
   publish-language-server:
+    if: ${{ github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v5
@@ -39,16 +45,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build production artifacts
-        run: pnpm run build:prod
+      - name: Generate grammar
+        run: pnpm run generate:grammar
+
+      - name: Build wrapper
+        run: pnpm run build:wrapper:prod
 
       - name: Stamp dev version for this commit
         working-directory: packages/language-server
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           OWNER_LOWER="${GITHUB_REPOSITORY_OWNER,,}"
           PUBLISH_NAME="@${OWNER_LOWER}/jsoniq-language-server"
           BASE_VERSION="$(node -p "require('./package.json').version")"
-          DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_RUN_NUMBER}.${GITHUB_SHA::7}"
+          DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_RUN_NUMBER}.${HEAD_SHA::7}"
           npm pkg set name="${PUBLISH_NAME}"
           npm version "${DEV_VERSION}" --no-git-tag-version
           echo "Publishing ${PUBLISH_NAME}@${DEV_VERSION}"
