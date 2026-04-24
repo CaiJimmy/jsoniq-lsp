@@ -1,4 +1,3 @@
-import type { ParseTree } from "antlr4ng";
 import type {
     DocumentSymbol,
     Position,
@@ -33,8 +32,6 @@ export interface BaseDefinition {
 }
 
 export interface BaseSourceDefinition extends BaseDefinition {
-    node: ParseTree;
-
     // Entire range of the declaration.
     range: Range;
 
@@ -72,7 +69,6 @@ export type Definition = SourceDefinition | BuiltinFunctionDefinition;
 
 export interface Reference {
     name: string;
-    node: ParseTree;
     range: Range;
 }
 

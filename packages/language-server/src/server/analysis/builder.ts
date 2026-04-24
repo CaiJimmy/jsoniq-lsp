@@ -141,12 +141,11 @@ export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
         declare(createDefinition(name, kind, node, varRef, document));
     };
 
-    const recordReference = (name: string, node: ParseTree, range: Range): void => {
+    const recordReference = (name: string, range: Range): void => {
         const declaration = resolve(name);
         if (declaration === undefined) {
             unresolvedReferences.push({
                 name,
-                node,
                 range,
             });
             return;
@@ -154,7 +153,6 @@ export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
 
         const reference = {
             name,
-            node,
             range,
             declaration,
         } satisfies ResolvedReference;
@@ -295,7 +293,7 @@ export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
         if (node instanceof VarRefContext && !isDeclarationVarRef(node)) {
             const name = varRefNameOrNull(node);
             if (name !== null) {
-                recordReference(name, node, rangeFromNode(node, document));
+                recordReference(name, rangeFromNode(node, document));
             }
         }
 
@@ -303,7 +301,7 @@ export function buildAnalysis(document: TextDocument): JsoniqAnalysis {
             const nameNode = node._fn_name ?? node.qname();
             const name = functionNameWithArityOrNull(node);
             if (name !== null) {
-                recordReference(name, node, rangeFromNode(nameNode, document));
+                recordReference(name, rangeFromNode(nameNode, document));
             }
         }
     };
@@ -458,7 +456,6 @@ function createDefinition(
 ): SourceDefinition {
     const result = {
         name,
-        node: declarationNode,
         range: rangeFromNode(declarationNode, document),
         selectionRange: rangeFromNode(selectionNode, document),
         scopeEnd: { line: 0, character: 0 },

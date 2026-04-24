@@ -1,5 +1,3 @@
-import { FunctionDeclContext } from "../../grammar/jsoniqParser.js";
-import { functionName } from "../utils/name.js";
 import type { JsoniqAnalysis } from "./model.js";
 import type { TypeInferenceResult } from "../wrapper/type-inference.js";
 
@@ -19,7 +17,7 @@ export function injectInferredTypeToAnalysis(analysis: JsoniqAnalysis, inferredT
             }
 
             const { name: expectedName, parameterTypes, returnType } = functionType.value;
-            const name = functionName(definition.node as FunctionDeclContext);
+            const name = definition.name.split("#", 1)[0] ?? definition.name;
 
             if (name !== expectedName) {
                 throw new Error(`Inferred function type name ${expectedName} does not match the function declaration name ${name} in the source code.`);
