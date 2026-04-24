@@ -8,7 +8,7 @@ import {
 } from "vscode-languageserver/node.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { parseJsoniqDocument } from "./parser.js";
+import { parseJsoniqDocument } from "./parser/index.js";
 import { collectSemanticDiagnostics, collectSemanticTokens, legend as semanticLegend } from "./semantic.js";
 import { collectDocumentSymbols } from "./symbols.js";
 import { findDefinitionLocation } from "./definitions.js";

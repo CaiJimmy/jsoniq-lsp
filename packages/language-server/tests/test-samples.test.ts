@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { parseJsoniqDocument } from "../src/server/parser";
+import { parseJsoniqDocument } from "../src/server/parser/index";
 import { testDocumentFromUri } from "./test-utils.js";
 
 type SampleExpectation = "valid" | "invalid";

@@ -12,58 +12,25 @@ import { CodeCompletionCore } from "antlr4-c3";
 import {
     Diagnostic,
     DiagnosticSeverity,
-    type DocumentUri,
     type Range,
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { jsoniqLexer } from "../grammar/jsoniqLexer.js";
-import { jsoniqParser, type ModuleAndThisIsItContext } from "../grammar/jsoniqParser.js";
-import { lowerBound } from "./utils/binary-search.js";
+import { jsoniqLexer } from "../../../grammar/jsoniqLexer.js";
+import { jsoniqParser, type ModuleAndThisIsItContext } from "../../../grammar/jsoniqParser.js";
+import type { ParsedDocument, ParserAdapter, ParseResult, SyntaxContext } from "../types.js";
+import { lowerBound } from "../../utils/binary-search.js";
 
-/**
- * Creates a new instance of the JSONiq parser for the given source code. 
- * @param source The source code to parse
- * @returns An object containing the lexer, parser, and token stream for the given source code
- */
-function createParser(source: string): { lexer: jsoniqLexer; parser: jsoniqParser; tokenStream: CommonTokenStream } {
-    const input = CharStream.fromString(source);
-    const lexer = new jsoniqLexer(input);
-    const tokenStream = new CommonTokenStream(lexer);
-    const parser = new jsoniqParser(tokenStream);
+export type JsoniqSyntaxContext = SyntaxContext;
 
-    return { lexer, parser, tokenStream };
+export type JsoniqParseResult = ParseResult<ModuleAndThisIsItContext, JsoniqSyntaxContext>;
+
+export interface JsoniqParsedDocument extends ParsedDocument<JsoniqParseResult> {
+    parser: jsoniqParser;
+    tokens: Token[];
+    result: JsoniqParseResult;
 }
 
-export interface JsoniqSyntaxContext {
-    /**
-     * List of token types that are expected at the position where code completion is invoked.
-     */
-    expectedTokenSet: IntervalSet;
-
-    /**
-     * The stack of parser rules that are active at the position where code completion is invoked, with the most recently entered rule first.
-     * This can be used to determine the syntactic context for code completion suggestions (e.g., whether we are inside a function declaration, an expression, etc.).
-     */
-    ruleStack: number[];
-
-    offset: number;
-}
-
-function toParserRuleStack(parser: jsoniqParser, ruleNames: string[]): number[] {
-    return ruleNames
-        .map((ruleName) => parser.getRuleIndex(ruleName))
-        .filter((ruleIndex) => ruleIndex >= 0);
-}
-
-export interface JsoniqParseResult {
-    diagnostics: Diagnostic[];
-    completionContexts: JsoniqSyntaxContext[];
-    tree: ModuleAndThisIsItContext;
-}
-/**
- * Class used to collect syntax errors and capture parser context for completion.
- */
 class JsoniqErrorListener extends BaseErrorListener {
     public readonly diagnostics: Diagnostic[] = [];
     public readonly contexts: JsoniqSyntaxContext[] = [];
@@ -124,14 +91,14 @@ class JsoniqErrorListener extends BaseErrorListener {
     }
 }
 
-interface CachedParse {
-    version: number;
-    parser: jsoniqParser;
-    tokens: Token[];
-    result: JsoniqParseResult;
-}
+export const jsoniqParserAdapter: ParserAdapter<JsoniqParsedDocument> = {
+    id: "jsoniq",
+    supports: () => true,
+    parse: parseJsoniq,
+    collectCompletionContext,
+};
 
-function buildCachedParse(document: TextDocument): CachedParse {
+function parseJsoniq(document: TextDocument): JsoniqParsedDocument {
     const { lexer, parser, tokenStream } = createParser(document.getText());
     const errorListener = new JsoniqErrorListener(document);
 
@@ -143,12 +110,10 @@ function buildCachedParse(document: TextDocument): CachedParse {
     const tree = parser.moduleAndThisIsIt();
 
     tokenStream.fill();
-    const tokens = tokenStream.getTokens()
 
     return {
-        version: document.version,
         parser,
-        tokens,
+        tokens: tokenStream.getTokens(),
         result: {
             diagnostics: errorListener.diagnostics,
             completionContexts: errorListener.contexts,
@@ -157,46 +122,13 @@ function buildCachedParse(document: TextDocument): CachedParse {
     };
 }
 
-const parseCache = new Map<DocumentUri, CachedParse>();
-
-function getCachedParse(document: TextDocument): CachedParse {
-    const cached = parseCache.get(document.uri);
-
-    if (cached !== undefined && cached.version === document.version) {
-        return cached;
-    }
-
-    const next = buildCachedParse(document);
-    parseCache.set(document.uri, next);
-    return next;
-}
-
-/**
- * Parses a JSONiq document and returns the parse result, 
- * which includes syntax diagnostics, completion contexts, and the parse tree.
- * @param document The JSONiq document to parse
- * @returns An object containing syntax diagnostics, completion contexts, and the parse tree for the given document
- */
-export function parseJsoniqDocument(document: TextDocument): JsoniqParseResult {
-    return getCachedParse(document).result;
-}
-
-/**
- * Collects the expected syntax at a given position in the document for code completion purposes.
- * @param document The JSONiq document for which to collect completion context
- * @param cursorOffset The offset in the document where code completion is invoked
- * @returns 
- */
-export function collectCompletionContext(document: TextDocument, cursorOffset: number): JsoniqSyntaxContext | null {
-    const cached = getCachedParse(document);
-    const caret = findCaretToken(cached.tokens, cursorOffset);
-    const tokenTypes = getCompletionTokenTypes(cached.parser, caret.tokenIndex);
-    const context = closestCompletionContext(cached.result.completionContexts, cursorOffset);
+function collectCompletionContext(parsed: JsoniqParsedDocument, cursorOffset: number): JsoniqSyntaxContext | null {
+    const caret = findCaretToken(parsed.tokens, cursorOffset);
+    const tokenTypes = getCompletionTokenTypes(parsed.parser, caret.tokenIndex);
+    const context = closestCompletionContext(parsed.result.completionContexts, cursorOffset);
     const ruleStack = context?.ruleStack ?? [];
 
     if (tokenTypes.length === 0) {
-        // C3 can fail to determine expected tokens in certain cases
-        // In that case, we fallback to using the context from the closest syntax error
         if (context === null) {
             return null;
         }
@@ -215,12 +147,21 @@ export function collectCompletionContext(document: TextDocument, cursorOffset: n
     };
 }
 
-/**
- * Find the closest completion context to the given cursor offset from a list of collected contexts.
- * @param contexts The list of collected completion contexts, which should be sorted by their offset in ascending order
- * @param cursorOffset The offset in the document where code completion is invoked
- * @returns The completion context that is closest to the given cursor offset, or null if no contexts are available
- */
+function createParser(source: string): { lexer: jsoniqLexer; parser: jsoniqParser; tokenStream: CommonTokenStream } {
+    const input = CharStream.fromString(source);
+    const lexer = new jsoniqLexer(input);
+    const tokenStream = new CommonTokenStream(lexer);
+    const parser = new jsoniqParser(tokenStream);
+
+    return { lexer, parser, tokenStream };
+}
+
+function toParserRuleStack(parser: jsoniqParser, ruleNames: string[]): number[] {
+    return ruleNames
+        .map((ruleName) => parser.getRuleIndex(ruleName))
+        .filter((ruleIndex) => ruleIndex >= 0);
+}
+
 function closestCompletionContext(
     contexts: JsoniqSyntaxContext[],
     cursorOffset: number,
@@ -229,7 +170,6 @@ function closestCompletionContext(
         return null;
     }
 
-    // Find the closest context to the cursor offset using binary search, since contexts are collected in order of occurrence in the document.
     const insertionPoint = lowerBound(contexts, cursorOffset, (context, target) => context.offset - target);
     const before = contexts[insertionPoint - 1];
     const after = contexts[insertionPoint];
@@ -246,12 +186,6 @@ function closestCompletionContext(
         : after;
 }
 
-/**
- * Get the token types that are expected at the given caret token index, using the ANTLR code completion core.
- * @param parser The JSONiq parser for the document being analyzed
- * @param caretTokenIndex The index of the token at the caret position for which to collect expected token types
- * @returns An array of token types that are expected at the given caret token index
- */
 function getCompletionTokenTypes(parser: jsoniqParser, caretTokenIndex: number): number[] {
     const core = new CodeCompletionCore(parser);
     core.ignoredTokens = IGNORED_COMPLETION_TOKENS;
@@ -292,10 +226,6 @@ function findCaretToken(tokens: Token[], cursorOffset: number): { tokenIndex: nu
     return { tokenIndex, offset: cursorOffset };
 }
 
-/**
- * Set of token types that should be ignored when collecting expected tokens for code completion, 
- * as they are not useful for suggesting completions to the user. 
- */
 const IGNORED_COMPLETION_TOKENS = new Set([
     jsoniqParser.ArgumentPlaceholder,
     jsoniqParser.Kplus,

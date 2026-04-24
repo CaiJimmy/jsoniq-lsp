@@ -22,7 +22,7 @@ import {
 import {
     collectCompletionContext,
     type JsoniqSyntaxContext,
-} from "./parser.js";
+} from "./parser/index.js";
 
 export async function findCompletions(document: TextDocument, position: Position): Promise<CompletionItem[]> {
     const source = document.getText();

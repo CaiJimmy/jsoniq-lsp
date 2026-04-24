@@ -22,7 +22,7 @@ import {
     VarDeclContext,
     VarRefContext,
 } from "../../grammar/jsoniqParser.js";
-import { parseJsoniqDocument } from "../parser.js";
+import { parseJsoniqDocument } from "../parser/index.js";
 import { comparePositions } from "../utils/position.js";
 import { rangeFromNode } from "../utils/range.js";
 import { isNewScopeNode } from "../utils/scope.js";
