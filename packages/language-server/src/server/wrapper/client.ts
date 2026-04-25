@@ -53,7 +53,7 @@ class RumbleWrapperClient {
 
     private async startAndHandshake(): Promise<void> {
         if (this.child === undefined) {
-            const launchConfig = resolveWrapperLaunchConfig();
+            const launchConfig = await resolveWrapperLaunchConfig();
             logger.info(`Launching wrapper with args: ${launchConfig.args.join(" ")}`);
 
             this.child = spawn("java", launchConfig.args, {
