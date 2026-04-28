@@ -174,13 +174,11 @@ jobs:
 
       - name: Prepare language server package for npm publish
         working-directory: packages/language-server
-        env:
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           OWNER_LOWER="${GITHUB_REPOSITORY_OWNER,,}"
           PUBLISH_NAME="@${OWNER_LOWER}/jsoniq-language-server"
           BASE_VERSION="$(node -p "require('./package.json').version")"
-          DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_RUN_NUMBER}.${HEAD_SHA::7}"
+          DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_SHA::7}"
           pnpm pkg set name="${PUBLISH_NAME}"
           pnpm version "${DEV_VERSION}" --no-git-tag-version
           echo "Publishing ${PUBLISH_NAME}@${DEV_VERSION}"
