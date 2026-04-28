@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   test:
@@ -187,4 +188,11 @@ jobs:
         working-directory: packages/language-server
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm publish --tag dev --registry=https://npm.pkg.github.com --no-git-checks
+        run: |
+          OWNER_LOWER="${GITHUB_REPOSITORY_OWNER,,}"
+          cat > ~/.npmrc <<EOF
+          @${OWNER_LOWER}:registry=https://npm.pkg.github.com
+          //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+          always-auth=true
+          EOF
+          pnpm publish --tag dev --registry=https://npm.pkg.github.com --no-git-checks
