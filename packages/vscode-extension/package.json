@@ -1,5 +1,5 @@
 {
-    "name": "@caijimmy/jsoniq-vscode-extension",
+    "name": "jsoniq-vscode-extension",
     "displayName": "JSONiq Language Support",
     "description": "VS Code client for the JSONiq language server.",
     "version": "0.1.0",
