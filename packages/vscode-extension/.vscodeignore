@@ -1,10 +1,6 @@
-# Ignore everything
-*
-*/**
-
-# Except the results of the build and configuration files
-!dist/**
-!language-configuration.json
-!syntaxes/**
-!README.md
-!node_modules/**
+.vscode/**
+src/**
+tsconfig.json
+rolldown.config.mjs
+*.ts
+.DS_Store
