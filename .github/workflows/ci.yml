@@ -5,8 +5,8 @@ on:
   pull_request:
 
 permissions:
+  id-token: write # Required for OIDC authentication when publishing to npm
   contents: write
-  packages: write
 
 jobs:
   test:
@@ -176,23 +176,14 @@ jobs:
       - name: Prepare language server package for npm publish
         working-directory: packages/language-server
         run: |
-          OWNER_LOWER="${GITHUB_REPOSITORY_OWNER,,}"
-          PUBLISH_NAME="@${OWNER_LOWER}/jsoniq-language-server"
+          PUBLISH_NAME="$(node -p "require('./package.json').name")"
           BASE_VERSION="$(node -p "require('./package.json').version")"
           DEV_VERSION="${BASE_VERSION}-dev.${GITHUB_SHA::7}"
-          pnpm pkg set name="${PUBLISH_NAME}"
           pnpm version "${DEV_VERSION}" --no-git-tag-version
           echo "Publishing ${PUBLISH_NAME}@${DEV_VERSION}"
 
-      - name: Publish language server package to GitHub Packages registry
+      - name: Publish language server package to npm
         working-directory: packages/language-server
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          OWNER_LOWER="${GITHUB_REPOSITORY_OWNER,,}"
-          cat > ~/.npmrc <<EOF
-          @${OWNER_LOWER}:registry=https://npm.pkg.github.com
-          //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
-          always-auth=true
-          EOF
-          pnpm publish --tag dev --registry=https://npm.pkg.github.com --no-git-checks
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --tag dev --access public --no-git-checks
