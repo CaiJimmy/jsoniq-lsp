@@ -46,7 +46,7 @@
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "@caijimmy/jsoniq-language-server": "workspace:*",
+        "@jimmycai/jsoniq-language-server": "workspace:*",
         "vscode-languageclient": "^9.0.1"
     },
     "devDependencies": {
