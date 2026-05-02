@@ -14,7 +14,7 @@
     },
     "scripts": {
         "generate:grammar": "antlr-ng -Dlanguage=TypeScript --generate-visitor true --generate-listener false --output-directory src/grammar src/grammar/jsoniq.g4",
-        "build": "tsc -p tsconfig.json",
+        "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
         "build:prod": "pnpm run build",
         "watch": "tsc -w -p tsconfig.json",
         "start": "node ./dist/server/main.js",
@@ -32,6 +32,7 @@
     },
     "devDependencies": {
         "@types/node": "^25.6.0",
+        "tsc-alias": "^1.8.17",
         "typescript": "^6.0.3",
         "vitest": "^4.1.5"
     }
