@@ -45,7 +45,7 @@ export class SymbolsBuilder {
             return;
         }
 
-        const parent = this.findParent(declaration);
+        const parent = this.currentOwner()?.symbol;
         if (parent === undefined) {
             this.symbols.push(symbol);
         } else {
@@ -65,9 +65,8 @@ export class SymbolsBuilder {
         }
     }
 
-    private findParent(declaration: SemanticDeclaration): DocumentSymbol | undefined {
-        const currentOwner = this.owners[this.owners.length - 1];
-        return currentOwner?.symbol;
+    private currentOwner(): SymbolOwner | undefined {
+        return this.owners[this.owners.length - 1];
     }
 }
 
