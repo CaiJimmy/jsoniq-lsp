@@ -25,6 +25,7 @@ import type {
 } from "server/parser/semantic-events.js";
 import { functionNameWithArityOrNull, varRefNameOrNull } from "./name.js";
 import { rangeFromNode } from "server/utils/range.js";
+import { getScopeKind } from "./scope.js";
 
 class SemanticEventCollector {
     private events: SemanticEvent[] = [];
@@ -193,18 +194,6 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
     visit(tree);
 
     return events.collectedEvents;
-}
-
-function getScopeKind(node: ParseTree): ScopeKind | null {
-    if (node instanceof FunctionDeclContext) {
-        return "function";
-    }
-
-    if (node instanceof FlowrExprContext || node instanceof FlowrStatementContext) {
-        return "flowr";
-    }
-
-    return null;
 }
 
 /**

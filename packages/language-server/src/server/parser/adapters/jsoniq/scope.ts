@@ -1,5 +1,6 @@
 import { ParseTree } from "antlr4ng";
 import { FlowrExprContext, FlowrStatementContext, FunctionDeclContext } from "grammar/jsoniqParser.js";
+import { ScopeKind } from "server/parser/semantic-events.js";
 
 /**
  * A new variable scope is introduced by:
@@ -8,8 +9,14 @@ import { FlowrExprContext, FlowrStatementContext, FunctionDeclContext } from "gr
  * Each of these scopes can contain variable declarations that should not be visible outside of that scope, 
  *  so we push a new scope frame onto the stack when we enter these nodes, and pop it when we exit.
  */
-const newScopeNodeTypes = [FunctionDeclContext, FlowrExprContext, FlowrStatementContext];
+export function getScopeKind(node: ParseTree): ScopeKind | null {
+    if (node instanceof FunctionDeclContext) {
+        return "function";
+    }
 
-export function isNewScopeNode(node: ParseTree): node is InstanceType<typeof newScopeNodeTypes[number]> {
-    return newScopeNodeTypes.some((type) => node instanceof type);
+    if (node instanceof FlowrExprContext || node instanceof FlowrStatementContext) {
+        return "flowr";
+    }
+
+    return null;
 }
