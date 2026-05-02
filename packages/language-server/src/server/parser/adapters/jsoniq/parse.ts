@@ -6,7 +6,6 @@ import {
     type RecognitionException,
     type Recognizer,
     Token,
-    IntervalSet,
 } from "antlr4ng";
 import {
     Diagnostic,
@@ -22,21 +21,13 @@ import type {
 } from "server/parser/types.js";
 import { collectSemanticEvents } from "./semantic-events.js";
 
-export interface JSONiqParserSyntaxContext {
-    expectedTokenSet: IntervalSet;
-    ruleStack: number[];
-    offset: number;
-}
-
 export interface JsoniqParsedDocument extends ParseResult {
     parser: jsoniqParser;
     tokens: Token[];
-    completionContexts: JSONiqParserSyntaxContext[];
 }
 
 class JsoniqErrorListener extends BaseErrorListener {
     public readonly diagnostics: Diagnostic[] = [];
-    public readonly contexts: JSONiqParserSyntaxContext[] = [];
 
     public constructor(private readonly document: TextDocument) {
         super();
@@ -51,19 +42,6 @@ class JsoniqErrorListener extends BaseErrorListener {
         _error: RecognitionException | null,
     ): void {
         const range = this.createRange(offendingSymbol, line, column);
-
-        if (recognizer instanceof jsoniqParser) {
-            try {
-                const offset = this.document.offsetAt(range.start);
-                this.contexts.push({
-                    offset,
-                    expectedTokenSet: recognizer.getExpectedTokens(),
-                    ruleStack: toParserRuleStack(recognizer, recognizer.getRuleInvocationStack()),
-                });
-            } catch {
-                // The parser can be in an invalid state after a complete parse; diagnostics still matter.
-            }
-        }
 
         this.diagnostics.push({
             severity: DiagnosticSeverity.Error,
@@ -111,7 +89,6 @@ export function parseJsoniq(document: TextDocument): JsoniqParsedDocument {
         parser,
         tokens: tokenStream.getTokens(),
         diagnostics: errorListener.diagnostics,
-        completionContexts: errorListener.contexts,
         semanticEvents: collectSemanticEvents(tree, document),
     };
 }
@@ -123,10 +100,4 @@ function createParser(source: string): { lexer: jsoniqLexer; parser: jsoniqParse
     const parser = new jsoniqParser(tokenStream);
 
     return { lexer, parser, tokenStream };
-}
-
-function toParserRuleStack(parser: jsoniqParser, ruleNames: string[]): number[] {
-    return ruleNames
-        .map((ruleName) => parser.getRuleIndex(ruleName))
-        .filter((ruleIndex) => ruleIndex >= 0);
 }
