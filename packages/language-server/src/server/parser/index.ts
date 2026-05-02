@@ -2,7 +2,7 @@ import type { DocumentUri } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type { ParsedDocument, ParserAdapter } from "./types.js";
-import type { JsoniqParseResult, JsoniqSyntaxContext } from "./adapters/jsoniq-adapter.js";
+import type { JsoniqParseResult, JsoniqSyntaxContext } from "./adapters/jsoniq/index.js";
 import { getParserAdapterForDocument } from "./registry.js";
 
 export type { JsoniqParseResult, JsoniqSyntaxContext };

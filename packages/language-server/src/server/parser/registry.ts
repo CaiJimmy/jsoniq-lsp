@@ -1,7 +1,7 @@
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import type { ParserAdapter } from "./types.js";
-import { jsoniqParserAdapter } from "./adapters/jsoniq-adapter.js";
+import { jsoniqParserAdapter } from "./adapters/jsoniq/index.js";
 
 const adapters: ParserAdapter[] = [
     jsoniqParserAdapter,
