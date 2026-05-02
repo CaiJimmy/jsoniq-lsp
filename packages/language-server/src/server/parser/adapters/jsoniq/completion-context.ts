@@ -4,8 +4,8 @@ import {
     Token,
 } from "antlr4ng";
 
-import { jsoniqParser } from "../../../../grammar/jsoniqParser.js";
-import { lowerBound } from "../../../utils/binary-search.js";
+import { jsoniqParser } from "grammar/jsoniqParser.js";
+import { lowerBound } from "server/utils/binary-search.js";
 import type {
     JsoniqParsedDocument,
     JsoniqSyntaxContext,

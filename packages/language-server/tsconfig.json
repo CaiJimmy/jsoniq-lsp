@@ -10,7 +10,15 @@
         "exactOptionalPropertyTypes": true,
         "declaration": true,
         "sourceMap": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "paths": {
+            "grammar/*": [
+                "./src/grammar/*"
+            ],
+            "server/*": [
+                "./src/server/*"
+            ]
+        }
     },
     "include": [
         "src",

@@ -1,4 +1,4 @@
-import type { ParserAdapter } from "../../types.js";
+import type { ParserAdapter } from "server/parser/types.js";
 import { collectCompletionContext } from "./completion-context.js";
 import {
     parseJsoniq,

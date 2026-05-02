@@ -14,9 +14,9 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import { jsoniqLexer } from "../../../../grammar/jsoniqLexer.js";
-import { jsoniqParser, type ModuleAndThisIsItContext } from "../../../../grammar/jsoniqParser.js";
-import type { ParsedDocument, ParseResult, SyntaxContext } from "../../types.js";
+import { jsoniqLexer } from "grammar/jsoniqLexer.js";
+import { jsoniqParser, type ModuleAndThisIsItContext } from "grammar/jsoniqParser.js";
+import type { ParsedDocument, ParseResult, SyntaxContext } from "server/parser/types.js";
 
 export type JsoniqSyntaxContext = SyntaxContext;
 
