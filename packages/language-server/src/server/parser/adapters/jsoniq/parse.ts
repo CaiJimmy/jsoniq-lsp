@@ -17,6 +17,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import { jsoniqLexer } from "grammar/jsoniqLexer.js";
 import { jsoniqParser, type ModuleAndThisIsItContext } from "grammar/jsoniqParser.js";
 import type { ParsedDocument, ParseResult, SyntaxContext } from "server/parser/types.js";
+import { collectSemanticEvents } from "./semantic-events.js";
 
 export type JsoniqSyntaxContext = SyntaxContext;
 
@@ -107,6 +108,7 @@ export function parseJsoniq(document: TextDocument): JsoniqParsedDocument {
         result: {
             diagnostics: errorListener.diagnostics,
             completionContexts: errorListener.contexts,
+            semanticEvents: collectSemanticEvents(tree, document),
             tree,
         },
     };
