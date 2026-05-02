@@ -8,13 +8,13 @@ import { jsoniqParser } from "grammar/jsoniqParser.js";
 import { lowerBound } from "server/utils/binary-search.js";
 import type {
     JsoniqParsedDocument,
-    JsoniqSyntaxContext,
 } from "./parse.js";
+import { SyntaxContext } from "server/parser/types.js";
 
-export function collectCompletionContext(parsed: JsoniqParsedDocument, cursorOffset: number): JsoniqSyntaxContext | null {
+export function collectCompletionContext(parsed: JsoniqParsedDocument, cursorOffset: number): SyntaxContext | null {
     const caret = findCaretToken(parsed.tokens, cursorOffset);
     const tokenTypes = getCompletionTokenTypes(parsed.parser, caret.tokenIndex);
-    const context = closestCompletionContext(parsed.result.completionContexts, cursorOffset);
+    const context = closestCompletionContext(parsed.completionContexts, cursorOffset);
     const ruleStack = context?.ruleStack ?? [];
 
     if (tokenTypes.length === 0) {
@@ -37,9 +37,9 @@ export function collectCompletionContext(parsed: JsoniqParsedDocument, cursorOff
 }
 
 function closestCompletionContext(
-    contexts: JsoniqSyntaxContext[],
+    contexts: SyntaxContext[],
     cursorOffset: number,
-): JsoniqSyntaxContext | null {
+): SyntaxContext | null {
     if (contexts.length === 0) {
         return null;
     }
