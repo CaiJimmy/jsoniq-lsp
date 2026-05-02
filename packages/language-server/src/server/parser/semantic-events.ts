@@ -4,7 +4,8 @@ import type { SourceDefinitionKind } from "../analysis/model.js";
 
 export type SemanticEvent =
     | SemanticScopeEvent
-    | SemanticDeclarationEvent
+    | SemanticEnterDeclarationEvent
+    | SemanticExitDeclarationEvent
     | SemanticReferenceEvent;
 
 export type ScopeKind = "function" | "flowr";
@@ -15,12 +16,21 @@ export interface SemanticScopeEvent {
     scopeKind: ScopeKind;
 }
 
-export interface SemanticDeclarationEvent {
-    type: "declaration";
+export interface SemanticDeclaration {
     name: string;
     kind: SourceDefinitionKind;
     range: Range;
     selectionRange: Range;
+}
+
+export interface SemanticEnterDeclarationEvent {
+    type: "enterDeclaration";
+    declaration: SemanticDeclaration;
+}
+
+export interface SemanticExitDeclarationEvent {
+    type: "exitDeclaration";
+    declaration: SemanticDeclaration;
 }
 
 export interface SemanticReferenceEvent {

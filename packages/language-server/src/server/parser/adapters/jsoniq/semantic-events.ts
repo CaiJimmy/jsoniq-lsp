@@ -16,7 +16,7 @@ import {
     type ModuleAndThisIsItContext,
 } from "grammar/jsoniqParser.js";
 import type {
-    SemanticDeclarationEvent,
+    SemanticDeclaration,
     SemanticEvent,
     SemanticReferenceEvent,
     ScopeKind,
@@ -41,10 +41,17 @@ class SemanticEventCollector {
         this.events.push(event);
     }
 
-    public declaration(event: Omit<SemanticDeclarationEvent, "type">): void {
+    public enterDeclaration(declaration: SemanticDeclaration): void {
         this.emit({
-            type: "declaration",
-            ...event,
+            type: "enterDeclaration",
+            declaration,
+        });
+    }
+
+    public exitDeclaration(declaration: SemanticDeclaration): void {
+        this.emit({
+            type: "exitDeclaration",
+            declaration,
         });
     }
 
@@ -58,21 +65,21 @@ class SemanticEventCollector {
     }
 
     public variable(
-        kind: SemanticDeclarationEvent["kind"],
+        kind: SemanticDeclaration["kind"],
         declarationNode: ParseTree,
         selectionNode: VarRefContext,
-    ): void {
+    ): SemanticDeclaration | undefined {
         const name = varRefNameOrNull(selectionNode);
         if (name === null) {
-            return;
+            return undefined;
         }
 
-        this.declaration({
+        return {
             name,
             kind,
             range: rangeFromNode(declarationNode, this.document),
             selectionRange: rangeFromNode(selectionNode, this.document),
-        });
+        };
     };
 
     public scope(range: Range, enter: boolean, scopeKind: ScopeKind): void {
@@ -87,29 +94,27 @@ class SemanticEventCollector {
 export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: TextDocument): readonly SemanticEvent[] {
     const events = new SemanticEventCollector(document);
 
-    const collectDefinitionsBeforeScope = (node: ParseTree): void => {
+    const collectDeclarations = (node: ParseTree): SemanticDeclaration[] => {
         if (node instanceof FunctionDeclContext) {
             const name = functionNameWithArityOrNull(node);
             const selectionNode = node._fn_name ?? node.qname();
             if (name !== null && selectionNode !== null) {
-                events.declaration({
+                return [{
                     name,
                     kind: "function",
                     range: rangeFromNode(node, document),
                     selectionRange: rangeFromNode(selectionNode, document),
-                });
+                }];
             }
         }
-    };
 
-    const collectDefinitionsBeforeChildren = (node: ParseTree): void => {
         if (node instanceof ParamContext) {
             const qname = node.qname();
             const name = qname?.getText().trim();
             if (qname !== null && name !== undefined && name !== "") {
                 const dollarRange = rangeFromNode(node.Kdollar(), document);
                 const qnameRange = rangeFromNode(qname, document);
-                events.declaration({
+                return [{
                     name: `$${name}`,
                     kind: "parameter",
                     range: rangeFromNode(node, document),
@@ -117,9 +122,37 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
                         start: dollarRange.start,
                         end: qnameRange.end,
                     },
-                });
+                }];
             }
         }
+
+        if (node instanceof VarDeclContext) {
+            const declaration = events.variable("declare-variable", node, node.varRef());
+            return declaration === undefined ? [] : [declaration];
+        }
+
+        if (node instanceof ForVarContext) {
+            return node.varRef()
+                .map((varRef, index) => events.variable(index === 0 ? "for" : "for-position", node, varRef))
+                .filter((declaration): declaration is SemanticDeclaration => declaration !== undefined);
+        }
+
+        if (node instanceof LetVarContext) {
+            const declaration = events.variable("let", node, node.varRef());
+            return declaration === undefined ? [] : [declaration];
+        }
+
+        if (node instanceof GroupByVarContext) {
+            const declaration = events.variable("group-by", node, node.varRef());
+            return declaration === undefined ? [] : [declaration];
+        }
+
+        if (node instanceof CountClauseContext) {
+            const declaration = events.variable("count", node, node.varRef());
+            return declaration === undefined ? [] : [declaration];
+        }
+
+        return [];
     };
 
     const collectReferencesBeforeChildren = (node: ParseTree): void => {
@@ -139,37 +172,17 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
         }
     };
 
-    const collectDefinitionsAfterChildren = (node: ParseTree): void => {
-        if (node instanceof VarDeclContext) {
-            events.variable("declare-variable", node, node.varRef());
-        } else if (node instanceof ForVarContext) {
-            const variableRefs = node.varRef();
-            const boundVariable = variableRefs[0];
-            if (boundVariable !== undefined) {
-                events.variable("for", node, boundVariable);
-            }
-            const positionVariable = variableRefs[1];
-            if (positionVariable !== undefined) {
-                events.variable("for-position", node, positionVariable);
-            }
-        } else if (node instanceof LetVarContext) {
-            events.variable("let", node, node.varRef());
-        } else if (node instanceof GroupByVarContext) {
-            events.variable("group-by", node, node.varRef());
-        } else if (node instanceof CountClauseContext) {
-            events.variable("count", node, node.varRef());
-        }
-    };
-
     const visit = (node: ParseTree): void => {
-        collectDefinitionsBeforeScope(node);
+        const declarations = collectDeclarations(node);
+        for (const declaration of declarations) {
+            events.enterDeclaration(declaration);
+        }
 
         const scopeKind = getScopeKind(node);
         if (scopeKind !== null) {
             events.scope(rangeFromNode(node, document), true, scopeKind);
         }
 
-        collectDefinitionsBeforeChildren(node);
         collectReferencesBeforeChildren(node);
 
         for (let index = 0; index < node.getChildCount(); index += 1) {
@@ -179,10 +192,12 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
             }
         }
 
-        collectDefinitionsAfterChildren(node);
-
         if (scopeKind !== null) {
             events.scope(rangeFromNode(node, document), false, scopeKind);
+        }
+
+        for (let index = declarations.length - 1; index >= 0; index -= 1) {
+            events.exitDeclaration(declarations[index]!);
         }
     };
 
