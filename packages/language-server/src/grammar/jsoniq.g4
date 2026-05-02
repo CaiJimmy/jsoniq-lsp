@@ -126,15 +126,15 @@ dfPropertyName          : 'decimal-separator'
 moduleImport            : 'import' 'module' ('namespace' prefix=NCName '=')? targetNamespace=uriLiteral (Kat uriLiteral (',' uriLiteral)*)?;
 
 // TODO: Assignable variable decl
-varDecl                 : Kdeclare annotations Kvariable varRef (Kas sequenceType)? ((':=' exprSingle) | (external='external' (':=' exprSingle)?));
+varDecl                 : Kdeclare annotations Kvariable declaredVarRef (Kas sequenceType)? ((':=' exprSingle) | (external='external' (':=' exprSingle)?));
 
 contextItemDecl         : Kdeclare Kcontext Kitem (Kas sequenceType)? ((':=' exprSingle) | (external='external' (':=' exprSingle)?));
 
-functionDecl            : Kdeclare annotations 'function' fn_name=qname '(' paramList? ')'
+functionDecl            : Kdeclare annotations 'function' fn_name=declaredQName '(' paramList? ')'
                           (Kas return_type=sequenceType)?
                           ('{' (fn_body=statementsAndOptionalExpr) '}' | is_external='external');
 
-typeDecl                : Kdeclare Ktype type_name=qname 'as' (schema=schemaLanguage)? type_definition=exprSingle;
+typeDecl                : Kdeclare Ktype type_name=declaredQName 'as' (schema=schemaLanguage)? type_definition=exprSingle;
 
 schemaLanguage          : 'jsound' 'compact'
                         | 'jsound' 'verbose'
@@ -142,7 +142,7 @@ schemaLanguage          : 'jsound' 'compact'
 
 paramList               : param (',' param)*;
 
-param                   : '$' qname (Kas sequenceType)?;
+param                   : declaredVarRef (Kas sequenceType)?;
 ///////////////////////// constructs, expression
 
 expr                    : exprSingle (',' exprSingle)*;     // expr -> CommaExpression in visitor
@@ -178,21 +178,21 @@ flowrExpr               : (start_for=forClause| start_let=letClause)
 
 forClause               : Kfor vars+=forVar (',' vars+=forVar)*;
 
-forVar                  : var_ref=varRef
+forVar                  : var_ref=declaredVarRef
                           (Kas seq=sequenceType)?
                           (flag=Kallowing Kempty)?
-                          (Kat at=varRef)?
+                          (Kat at=declaredVarRef)?
                           Kin ex=exprSingle;
 
 letClause               : Klet vars+=letVar (',' vars+=letVar)*;
 
-letVar                  : var_ref=varRef (Kas seq=sequenceType)? ':=' ex=exprSingle ;
+letVar                  : var_ref=declaredVarRef (Kas seq=sequenceType)? ':=' ex=exprSingle ;
 
 whereClause             : Kwhere exprSingle;
 
 groupByClause           : Kgroup Kby vars+=groupByVar (',' vars+=groupByVar)*;
 
-groupByVar              : var_ref=varRef
+groupByVar              : var_ref=declaredVarRef
                           ((Kas seq=sequenceType)? decl=':=' ex=exprSingle)?
                           (Kcollation uri=uriLiteral)?;
 
@@ -203,13 +203,13 @@ orderByExpr             : ex=exprSingle
                           (Kempty (gr=Kgreatest | ls=Kleast))?
                           (Kcollation uril=uriLiteral)?;
 
-countClause             : Kcount varRef;
+countClause             : Kcount declaredVarRef;
 
 quantifiedExpr          : (so=Ksome | ev=Kevery)
                           vars+=quantifiedExprVar (',' vars+=quantifiedExprVar)*
                           Ksatisfies exprSingle;
 
-quantifiedExprVar       : varRef (Kas sequenceType)? Kin exprSingle;
+quantifiedExprVar       : declaredVarRef (Kas sequenceType)? Kin exprSingle;
 
 switchExpr              : Kswitch '(' cond=expr ')' cases+=switchCaseClause+ Kdefault Kreturn def=exprSingle;
 
@@ -217,7 +217,7 @@ switchCaseClause        : (Kcase cond+=exprSingle)+ Kreturn ret=exprSingle;
 
 typeSwitchExpr          : Ktypeswitch '(' cond=expr ')' cses+=caseClause+ Kdefault (var_ref=varRef)? Kreturn def=exprSingle;
 
-caseClause              : Kcase (var_ref=varRef Kas)? union+=sequenceType ('|' union+=sequenceType)* Kreturn ret=exprSingle;
+caseClause              : Kcase (var_ref=declaredVarRef Kas)? union+=sequenceType ('|' union+=sequenceType)* Kreturn ret=exprSingle;
 
 ifExpr                  : Kif '(' test_condition=expr ')'
                           Kthen branch=exprSingle
@@ -304,6 +304,10 @@ blockExpr : '{' statementsAndExpr '}' ;
 
 
 varRef                  : '$' var_name=qname;
+
+declaredVarRef          : varRef;
+
+declaredQName           : qname;
 
 parenthesizedExpr       : '(' expr? ')';
 

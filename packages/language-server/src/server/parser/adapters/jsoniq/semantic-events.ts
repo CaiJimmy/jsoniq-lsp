@@ -5,6 +5,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import {
     ContextItemDeclContext,
     CountClauseContext,
+    DeclaredVarRefContext,
     NamespaceDeclContext,
     ForVarContext,
     FunctionDeclContext,
@@ -124,7 +125,7 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
         }
 
         if (node instanceof TypeDeclContext) {
-            const nameNode = node.qname();
+            const nameNode = node._type_name ?? node.declaredQName();
             const name = nameNode.getText().trim();
             if (name !== "") {
                 return [{
@@ -138,7 +139,7 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
 
         if (node instanceof FunctionDeclContext) {
             const name = functionNameWithArityOrNull(node);
-            const selectionNode = node._fn_name ?? node.qname();
+            const selectionNode = node.declaredQName();
             if (name !== null && selectionNode !== null) {
                 return [{
                     name,
@@ -150,46 +151,41 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
         }
 
         if (node instanceof ParamContext) {
-            const qname = node.qname();
-            const name = qname?.getText().trim();
-            if (qname !== null && name !== undefined && name !== "") {
-                const dollarRange = rangeFromNode(node.Kdollar(), document);
-                const qnameRange = rangeFromNode(qname, document);
+            const declaredVarRef = node.declaredVarRef();
+            const name = varRefNameOrNull(declaredVarRef.varRef());
+            if (name !== null) {
                 return [{
-                    name: `$${name}`,
+                    name,
                     kind: "parameter",
                     range: rangeFromNode(node, document),
-                    selectionRange: {
-                        start: dollarRange.start,
-                        end: qnameRange.end,
-                    },
+                    selectionRange: rangeFromNode(declaredVarRef, document),
                 }];
             }
         }
 
         if (node instanceof VarDeclContext) {
-            const declaration = events.variable("declare-variable", node, node.varRef());
+            const declaration = events.variable("declare-variable", node, node.declaredVarRef().varRef());
             return declaration === undefined ? [] : [declaration];
         }
 
         if (node instanceof ForVarContext) {
-            return node.varRef()
-                .map((varRef, index) => events.variable(index === 0 ? "for" : "for-position", node, varRef))
+            return node.declaredVarRef()
+                .map((declaredVarRef, index) => events.variable(index === 0 ? "for" : "for-position", node, declaredVarRef.varRef()))
                 .filter((declaration): declaration is SemanticDeclaration => declaration !== undefined);
         }
 
         if (node instanceof LetVarContext) {
-            const declaration = events.variable("let", node, node.varRef());
+            const declaration = events.variable("let", node, node.declaredVarRef().varRef());
             return declaration === undefined ? [] : [declaration];
         }
 
         if (node instanceof GroupByVarContext) {
-            const declaration = events.variable("group-by", node, node.varRef());
+            const declaration = events.variable("group-by", node, node.declaredVarRef().varRef());
             return declaration === undefined ? [] : [declaration];
         }
 
         if (node instanceof CountClauseContext) {
-            const declaration = events.variable("count", node, node.varRef());
+            const declaration = events.variable("count", node, node.declaredVarRef().varRef());
             return declaration === undefined ? [] : [declaration];
         }
 
@@ -256,15 +252,5 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
  * @returns true if the node is part of a variable declaration, false otherwise
  */
 function isDeclarationVarRef(node: VarRefContext): boolean {
-    const parent = node.parent;
-
-    if (parent instanceof VarDeclContext || parent instanceof LetVarContext || parent instanceof GroupByVarContext || parent instanceof CountClauseContext) {
-        return parent.varRef() === node;
-    }
-
-    if (parent instanceof ForVarContext) {
-        return parent.varRef().some((entry) => entry === node);
-    }
-
-    return false;
+    return node.parent instanceof DeclaredVarRefContext;
 }

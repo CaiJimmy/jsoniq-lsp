@@ -1,0 +1,1 @@
+The grammar file has been modified slightly compared to the original jsoniq.g4 so it would be easier distinguish between variable references and declarations (both used to be `varRef` in the original grammar).

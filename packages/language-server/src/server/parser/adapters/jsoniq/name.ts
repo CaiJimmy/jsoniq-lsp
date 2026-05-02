@@ -16,7 +16,7 @@ export function varRefNameOrNull(node: VarRefContext): string | null {
 }
 
 export function functionName(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): string {
-    return (node._fn_name?.getText() ?? node.qname().getText()).trim();
+    return (node._fn_name?.getText() ?? "").trim();
 }
 
 export function functionNameWithArity(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): string {
