@@ -21,7 +21,6 @@ export interface SemanticDeclarationEvent {
     kind: SourceDefinitionKind;
     range: Range;
     selectionRange: Range;
-    availability: "beforeChildren" | "afterChildren";
 }
 
 export interface SemanticReferenceEvent {

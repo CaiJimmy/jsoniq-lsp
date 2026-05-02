@@ -74,7 +74,6 @@ class SemanticEventCollector {
             kind,
             range: rangeFromNode(declarationNode, this.document),
             selectionRange: rangeFromNode(selectionNode, this.document),
-            availability: "afterChildren",
         });
     };
 
@@ -100,7 +99,6 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
                     kind: "function",
                     range: rangeFromNode(node, document),
                     selectionRange: rangeFromNode(selectionNode, document),
-                    availability: "beforeChildren",
                 });
             }
         }
@@ -121,7 +119,6 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
                         start: dollarRange.start,
                         end: qnameRange.end,
                     },
-                    availability: "beforeChildren",
                 });
             }
         }
