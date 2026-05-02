@@ -8,11 +8,11 @@ import { jsoniqParser } from "grammar/jsoniqParser.js";
 import { lowerBound } from "server/utils/binary-search.js";
 import type {
     JsoniqParsedDocument,
+    JSONiqParserSyntaxContext,
 } from "./parse.js";
 import type {
     CompletionIntent,
     ParserKeywordCompletion,
-    ParserSyntaxContext,
 } from "server/parser/types.js";
 import {
     EXPRESSION_KEYWORD_TOKENS,
@@ -33,7 +33,7 @@ export function getCompletionIntent(parsed: JsoniqParsedDocument, cursorOffset: 
     return toCompletionIntent(context);
 }
 
-function collectCompletionContext(parsed: JsoniqParsedDocument, cursorOffset: number): ParserSyntaxContext | null {
+function collectCompletionContext(parsed: JsoniqParsedDocument, cursorOffset: number): JSONiqParserSyntaxContext | null {
     const caret = findCaretToken(parsed.tokens, cursorOffset);
     const tokenTypes = getCompletionTokenTypes(parsed.parser, caret.tokenIndex);
     const context = closestCompletionContext(parsed.completionContexts, cursorOffset);
@@ -58,7 +58,7 @@ function collectCompletionContext(parsed: JsoniqParsedDocument, cursorOffset: nu
     };
 }
 
-function toCompletionIntent(context: ParserSyntaxContext): CompletionIntent {
+function toCompletionIntent(context: JSONiqParserSyntaxContext): CompletionIntent {
     // Determine whether we are in a context where a variable is being declared (e.g. the "$x" in "let $x := ..."),
     // which affects whether we offer variable completions and whether to include the "$" declaration starter.
     const insideVariableBindingHeader = isInsideVariableBindingHeader(context);
@@ -88,9 +88,9 @@ function toCompletionIntent(context: ParserSyntaxContext): CompletionIntent {
 }
 
 function closestCompletionContext(
-    contexts: ParserSyntaxContext[],
+    contexts: JSONiqParserSyntaxContext[],
     cursorOffset: number,
-): ParserSyntaxContext | null {
+): JSONiqParserSyntaxContext | null {
     if (contexts.length === 0) {
         return null;
     }
@@ -122,7 +122,7 @@ function getCompletionTokenTypes(parser: jsoniqParser, caretTokenIndex: number):
 /**
  * Determines whether we are in a context where a variable name is being declared, based on the syntax context.
  */
-function isInsideVariableBindingHeader(context: ParserSyntaxContext): boolean {
+function isInsideVariableBindingHeader(context: JSONiqParserSyntaxContext): boolean {
     const declarationDepth = firstIndexOfRule(context.ruleStack, VARIABLE_DECLARATION_RULES);
 
     if (declarationDepth === -1) {
@@ -146,7 +146,7 @@ function isInsideVariableBindingHeader(context: ParserSyntaxContext): boolean {
  * @param context current syntax context at the cursor position
  * @returns true if we are in an expression context, false otherwise
  */
-function isExpressionReferenceContext(context: ParserSyntaxContext): boolean {
+function isExpressionReferenceContext(context: JSONiqParserSyntaxContext): boolean {
     if (context.ruleStack[0] === jsoniqParser.RULE_qname) {
         // We are expecting a name, not an expression.
         return false;
@@ -180,7 +180,7 @@ function isExpressionReferenceContext(context: ParserSyntaxContext): boolean {
         || hasExpectedToken(context, NON_DOLLAR_EXPRESSION_START_TOKENS);
 }
 
-function keywordCompletions(context: ParserSyntaxContext, expressionReferenceContext: boolean): ParserKeywordCompletion[] {
+function keywordCompletions(context: JSONiqParserSyntaxContext, expressionReferenceContext: boolean): ParserKeywordCompletion[] {
     return KEYWORD_COMPLETIONS
         .filter((completion) => context.expectedTokenSet.contains(completion.tokenType))
         .filter((completion) => !expressionReferenceContext || EXPRESSION_KEYWORD_TOKENS.has(completion.tokenType))
@@ -200,7 +200,7 @@ function firstIndexOfRule(ruleStack: number[], candidates: Set<number>): number 
     return ruleStack.findIndex((rule) => candidates.has(rule));
 }
 
-function hasExpectedToken(context: ParserSyntaxContext, tokenTypes: Set<number>): boolean {
+function hasExpectedToken(context: JSONiqParserSyntaxContext, tokenTypes: Set<number>): boolean {
     return [...tokenTypes.values()]
         .some((tokenType) => context.expectedTokenSet.contains(tokenType));
 }

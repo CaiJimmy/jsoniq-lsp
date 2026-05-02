@@ -6,6 +6,7 @@ import {
     type RecognitionException,
     type Recognizer,
     Token,
+    IntervalSet,
 } from "antlr4ng";
 import {
     Diagnostic,
@@ -18,18 +19,24 @@ import { jsoniqLexer } from "grammar/jsoniqLexer.js";
 import { jsoniqParser } from "grammar/jsoniqParser.js";
 import type {
     ParseResult,
-    ParserSyntaxContext,
 } from "server/parser/types.js";
 import { collectSemanticEvents } from "./semantic-events.js";
+
+export interface JSONiqParserSyntaxContext {
+    expectedTokenSet: IntervalSet;
+    ruleStack: number[];
+    offset: number;
+}
 
 export interface JsoniqParsedDocument extends ParseResult {
     parser: jsoniqParser;
     tokens: Token[];
+    completionContexts: JSONiqParserSyntaxContext[];
 }
 
 class JsoniqErrorListener extends BaseErrorListener {
     public readonly diagnostics: Diagnostic[] = [];
-    public readonly contexts: ParserSyntaxContext[] = [];
+    public readonly contexts: JSONiqParserSyntaxContext[] = [];
 
     public constructor(private readonly document: TextDocument) {
         super();

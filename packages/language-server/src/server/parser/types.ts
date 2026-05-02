@@ -1,13 +1,6 @@
-import type { IntervalSet } from "antlr4ng";
 import type { Diagnostic } from "vscode-languageserver";
 import type { TextDocument } from "vscode-languageserver-textdocument";
 import type { SemanticEvent } from "./semantic-events.js";
-
-export interface ParserSyntaxContext {
-    expectedTokenSet: IntervalSet;
-    ruleStack: number[];
-    offset: number;
-}
 
 export interface ParserKeywordCompletion {
     label: string;
@@ -24,7 +17,6 @@ export interface CompletionIntent {
 
 export interface ParseResult {
     diagnostics: Diagnostic[];
-    completionContexts: ParserSyntaxContext[];
     semanticEvents: readonly SemanticEvent[];
 }
 
