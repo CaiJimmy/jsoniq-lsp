@@ -35,7 +35,5 @@ export interface ParserAdapter {
 
     parse(document: TextDocument): ParseResult;
 
-    collectCompletionContext(parsed: ParseResult, cursorOffset: number): ParserSyntaxContext | null;
-
-    getCompletionIntent(context: ParserSyntaxContext): CompletionIntent;
+    getCompletionIntent(parsed: ParseResult, cursorOffset: number): CompletionIntent | null;
 }

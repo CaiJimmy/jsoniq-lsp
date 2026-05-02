@@ -24,7 +24,16 @@ import {
     VARIABLE_DECLARATION_RULES,
 } from "./completion-data.js";
 
-export function collectCompletionContext(parsed: JsoniqParsedDocument, cursorOffset: number): ParserSyntaxContext | null {
+export function getCompletionIntent(parsed: JsoniqParsedDocument, cursorOffset: number): CompletionIntent | null {
+    const context = collectCompletionContext(parsed, cursorOffset);
+    if (context === null) {
+        return null;
+    }
+
+    return toCompletionIntent(context);
+}
+
+function collectCompletionContext(parsed: JsoniqParsedDocument, cursorOffset: number): ParserSyntaxContext | null {
     const caret = findCaretToken(parsed.tokens, cursorOffset);
     const tokenTypes = getCompletionTokenTypes(parsed.parser, caret.tokenIndex);
     const context = closestCompletionContext(parsed.completionContexts, cursorOffset);
@@ -49,7 +58,7 @@ export function collectCompletionContext(parsed: JsoniqParsedDocument, cursorOff
     };
 }
 
-export function getCompletionIntent(context: ParserSyntaxContext): CompletionIntent {
+function toCompletionIntent(context: ParserSyntaxContext): CompletionIntent {
     // Determine whether we are in a context where a variable is being declared (e.g. the "$x" in "let $x := ..."),
     // which affects whether we offer variable completions and whether to include the "$" declaration starter.
     const insideVariableBindingHeader = isInsideVariableBindingHeader(context);

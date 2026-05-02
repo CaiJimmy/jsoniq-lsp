@@ -5,7 +5,6 @@ import type {
     CompletionIntent,
     ParseResult,
     ParserAdapter,
-    ParserSyntaxContext,
 } from "./types.js";
 import { getParserAdapterForDocument } from "./registry.js";
 
@@ -44,17 +43,7 @@ export function parseDocument(document: TextDocument): ParseResult {
     return cached.parsed;
 }
 
-export function collectCompletionContext(document: TextDocument, cursorOffset: number): ParserSyntaxContext | null {
-    const cached = getCachedParsedDocument(document);
-    return cached.adapter.collectCompletionContext(cached.parsed, cursorOffset);
-}
-
 export function collectCompletionIntent(document: TextDocument, cursorOffset: number): CompletionIntent | null {
     const cached = getCachedParsedDocument(document);
-    const context = cached.adapter.collectCompletionContext(cached.parsed, cursorOffset);
-    if (context === null) {
-        return null;
-    }
-
-    return cached.adapter.getCompletionIntent(context);
+    return cached.adapter.getCompletionIntent(cached.parsed, cursorOffset);
 }
