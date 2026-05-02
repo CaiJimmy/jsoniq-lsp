@@ -1,4 +1,4 @@
-import { FunctionCallContext, FunctionDeclContext, NamedFunctionRefContext, VarRefContext } from "../../grammar/jsoniqParser.js";
+import { FunctionCallContext, FunctionDeclContext, NamedFunctionRefContext, VarRefContext } from "grammar/jsoniqParser.js";
 
 /**
  * Extracts the variable name from a VarRefContext node, including the leading "$" character.

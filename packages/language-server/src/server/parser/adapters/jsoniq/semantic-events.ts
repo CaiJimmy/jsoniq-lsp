@@ -23,7 +23,7 @@ import type {
     SemanticReferenceEvent,
     ScopeKind,
 } from "server/parser/semantic-events.js";
-import { functionNameWithArityOrNull, varRefNameOrNull } from "server/utils/name.js";
+import { functionNameWithArityOrNull, varRefNameOrNull } from "./name.js";
 import { rangeFromNode } from "server/utils/range.js";
 
 class SemanticEventCollector {
