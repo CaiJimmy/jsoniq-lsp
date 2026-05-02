@@ -18,7 +18,7 @@ import {
     NON_DOLLAR_EXPRESSION_START_TOKENS,
     VARIABLE_DECLARATION_NAME_RULES,
     VARIABLE_DECLARATION_RULES,
-} from "./completion-data.js";
+} from "./parser/adapters/jsoniq/completion-data.js";
 import {
     collectCompletionContext,
 } from "./parser/index.js";
