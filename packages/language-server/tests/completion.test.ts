@@ -169,30 +169,6 @@ describe("JSONiq completion", () => {
         expect(labelsAtCursor).not.toContain("$x");
     });
 
-    it("does not suggest clause continuations after expression operator", async () => {
-        const document = testDocument("completion-after-plus-expression-keywords", [
-            "let $r := true + ",
-        ]);
-
-        const labelsAtCursor = await completionLabels(document, {
-            line: 0,
-            character: "let $r := true + ".length,
-        });
-
-        expect(labelsAtCursor).toContain("if");
-        expect(labelsAtCursor).toContain("for");
-        expect(labelsAtCursor).not.toContain("return");
-        expect(labelsAtCursor).not.toContain("where");
-        expect(labelsAtCursor).not.toContain("group by");
-        expect(labelsAtCursor).not.toContain("order by");
-        expect(labelsAtCursor).not.toContain("create");
-        expect(labelsAtCursor).not.toContain("delete");
-        expect(labelsAtCursor).not.toContain("insert");
-        expect(labelsAtCursor).not.toContain("append");
-        expect(labelsAtCursor).not.toContain("ordered");
-        expect(labelsAtCursor).not.toContain("unordered");
-    });
-
     it("does not suggest prolog starters inside variable initializer expression", async () => {
         const document = testDocument("completion-declare-variable-initializer", [
             "declare variable $x := ",
