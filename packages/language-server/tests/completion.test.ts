@@ -2,7 +2,7 @@ import { type CompletionItem, type Position } from "vscode-languageserver";
 import { describe, expect, it } from "vitest";
 import { type TextDocument } from "vscode-languageserver-textdocument";
 
-import { findCompletions, findVariableCompletions } from "../src/server/completion.js";
+import { findCompletions } from "../src/server/completion.js";
 import { positionAtNth, testDocument } from "./test-utils.js";
 
 describe("JSONiq completion", () => {
@@ -15,7 +15,7 @@ describe("JSONiq completion", () => {
             "};",
         ]);
 
-        const items = await findVariableCompletions(document, positionAtNth(document, "$y", 1));
+        const items = await findCompletions(document, positionAtNth(document, "$y", 1));
 
         expect(labels(items)).toContain("$x");
         expect(labels(items)).toContain("$y");
