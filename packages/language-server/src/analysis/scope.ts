@@ -11,6 +11,7 @@ export type AnalysisScopeKind = ScopeKind | "module";
 
 export class Scope {
     private readonly definitionByName = new Map<string, SourceDefinition[]>();
+    private readonly children: Scope[] = [];
 
     private constructor(
         public readonly kind: AnalysisScopeKind,
@@ -35,7 +36,9 @@ export class Scope {
         end: Position,
         owner?: SourceDefinition
     ): Scope {
-        return new Scope(kind, this, owner, start, end);
+        const child = new Scope(kind, this, owner, start, end);
+        this.children.push(child);
+        return child;
     }
 
     public declare(newDefinition: SourceDefinition): void {
