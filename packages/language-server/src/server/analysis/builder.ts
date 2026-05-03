@@ -85,9 +85,6 @@ class AnalysisBuilder {
         let owner: SourceDefinition | undefined;
         if (scopeKind === "function") {
             const currentDefinition = this.pendingDeclarations.currentDefinition();
-            if (currentDefinition === undefined || currentDefinition.kind !== "function") {
-                throw new Error("Function scope entered without a preceding function declaration.");
-            }
             owner = currentDefinition;
         }
 
