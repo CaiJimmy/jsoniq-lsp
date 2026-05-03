@@ -5,7 +5,8 @@ export default defineConfig({
     output: {
         file: "./dist/extension.js",
         format: "cjs",
-        sourcemap: true,
+        sourcemap: process.env.BUILD !== "production",
+        minify: process.env.BUILD === "production",
     },
     external: [
         "vscode",

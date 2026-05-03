@@ -45,6 +45,7 @@
     },
     "scripts": {
         "build": "pnpm run clean && pnpm run typecheck && rolldown -c",
+        "build:prod": "pnpm run clean && pnpm run typecheck && rolldown -c  --environment BUILD:production",
         "typecheck": "tsc -p tsconfig.json --noEmit",
         "watch": "rolldown -c -w",
         "clean": "rm -rf dist"
