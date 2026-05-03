@@ -170,7 +170,7 @@ jobs:
           npm install --omit=dev
 
           test -f "node_modules/${LANGUAGE_SERVER_PACKAGE_NAME}/package.json"
-          test -f "node_modules/${LANGUAGE_SERVER_PACKAGE_NAME}/dist/server/main.js"
+          test -f "node_modules/${LANGUAGE_SERVER_PACKAGE_NAME}/dist/main.js"
           test -f "node_modules/vscode-languageclient/package.json"
 
       - name: Pack VS Code extension
