@@ -18,7 +18,7 @@ import {
     VarDeclContext,
     VarRefContext,
     type ModuleAndThisIsItContext,
-} from "grammar/jsoniqParser.js";
+} from "./grammar/jsoniqParser.js";
 import type {
     SemanticDeclaration,
     SemanticEvent,

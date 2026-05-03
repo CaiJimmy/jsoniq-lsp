@@ -1,5 +1,5 @@
 import { ParseTree } from "antlr4ng";
-import { FlowrExprContext, FlowrStatementContext, FunctionDeclContext } from "grammar/jsoniqParser.js";
+import { FlowrExprContext, FlowrStatementContext, FunctionDeclContext } from "./grammar/jsoniqParser.js";
 import { ScopeKind } from "server/parser/semantic-events.js";
 
 /**

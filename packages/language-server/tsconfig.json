@@ -12,9 +12,6 @@
         "sourceMap": true,
         "skipLibCheck": true,
         "paths": {
-            "grammar/*": [
-                "./src/grammar/*"
-            ],
             "server/*": [
                 "./src/server/*"
             ]

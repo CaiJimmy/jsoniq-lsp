@@ -1,4 +1,4 @@
-import { jsoniqParser } from "grammar/jsoniqParser.js";
+import { jsoniqParser } from "./grammar/jsoniqParser.js";
 
 export interface KeywordCompletion {
     tokenType: number;

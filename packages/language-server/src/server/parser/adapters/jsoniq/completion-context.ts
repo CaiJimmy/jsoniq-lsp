@@ -3,7 +3,7 @@ import {
 } from "antlr4-c3";
 import { Token } from "antlr4ng";
 
-import { jsoniqParser } from "grammar/jsoniqParser.js";
+import { jsoniqParser } from "./grammar/jsoniqParser.js";
 import type { JsoniqParsedDocument } from "./parse.js";
 import type {
     CompletionIntent,
