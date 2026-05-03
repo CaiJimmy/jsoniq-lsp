@@ -18,7 +18,7 @@ import { jsoniqLexer } from "./grammar/jsoniqLexer.js";
 import { jsoniqParser } from "./grammar/jsoniqParser.js";
 import type {
     ParseResult,
-} from "server/parser/types.js";
+} from "server/parser/types/result.js";
 import { collectSemanticEvents } from "./semantic-events.js";
 
 export interface JsoniqParsedDocument extends ParseResult {

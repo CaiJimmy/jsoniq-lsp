@@ -1,6 +1,6 @@
 import { ParseTree } from "antlr4ng";
 import { FlowrExprContext, FlowrStatementContext, FunctionDeclContext } from "./grammar/jsoniqParser.js";
-import { ScopeKind } from "server/parser/semantic-events.js";
+import { ScopeKind } from "server/parser/types/semantic-events.js";
 
 /**
  * A new variable scope is introduced by:

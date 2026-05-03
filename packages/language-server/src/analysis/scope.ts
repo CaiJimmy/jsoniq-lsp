@@ -1,6 +1,6 @@
 import type { Position } from "vscode-languageserver";
 
-import type { ScopeKind } from "server/parser/semantic-events.js";
+import type { ScopeKind } from "server/parser/types/semantic-events.js";
 import type {
     SourceDefinition,
     SourceFunctionDefinition,

@@ -1,4 +1,4 @@
-import type { SemanticDeclaration } from "server/parser/semantic-events.js";
+import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
 import type {
     SourceDefinition,
     SourceDefinitionKind,

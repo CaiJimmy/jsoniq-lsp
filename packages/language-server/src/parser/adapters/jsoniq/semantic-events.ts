@@ -24,7 +24,7 @@ import type {
     SemanticEvent,
     SemanticReferenceEvent,
     ScopeKind,
-} from "server/parser/semantic-events.js";
+} from "server/parser/types/semantic-events.js";
 import { functionNameWithArityOrNull, varRefNameOrNull } from "./name.js";
 import { rangeFromNode } from "server/utils/range.js";
 import { getScopeKind } from "./scope.js";

@@ -1,6 +1,6 @@
 import type { Range } from "vscode-languageserver";
 
-import type { SourceDefinitionKind } from "../analysis/model.js";
+import type { SourceDefinitionKind } from "../../analysis/model.js";
 
 export type SemanticEvent =
     | SemanticScopeEvent

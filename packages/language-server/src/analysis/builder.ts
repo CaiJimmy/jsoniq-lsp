@@ -5,7 +5,7 @@ import { parseDocument } from "server/parser/index.js";
 import type {
     SemanticDeclaration,
     ScopeKind,
-} from "server/parser/semantic-events.js";
+} from "server/parser/types/semantic-events.js";
 import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
 import { comparePositions } from "../utils/position.js";
 import {

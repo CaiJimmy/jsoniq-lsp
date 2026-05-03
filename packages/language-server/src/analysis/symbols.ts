@@ -1,5 +1,5 @@
 import { parseDocument } from "server/parser/index.js";
-import type { SemanticDeclaration } from "server/parser/semantic-events.js";
+import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
 import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { sameRange } from "server/utils/range.js";

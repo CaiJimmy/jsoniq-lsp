@@ -8,7 +8,7 @@ import type { JsoniqParsedDocument } from "./parse.js";
 import type {
     CompletionIntent,
     ParserKeywordCompletion,
-} from "server/parser/types.js";
+} from "server/parser/types/completion.js";
 import {
     IGNORED_COMPLETION_TOKENS,
     KEYWORD_COMPLETIONS,
