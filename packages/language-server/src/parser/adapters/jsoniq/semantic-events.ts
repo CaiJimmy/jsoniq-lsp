@@ -165,6 +165,9 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
 
         if (node instanceof VarDeclContext) {
             const declaration = events.variable("declare-variable", node, node.declaredVarRef().varRef());
+            if (declaration !== undefined && node.Ksemicolon().symbol.start < 0) {
+                declaration.completed = false;
+            }
             return declaration === undefined ? [] : [declaration];
         }
 

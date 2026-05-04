@@ -21,6 +21,7 @@ export interface SemanticDeclaration {
     kind: SemanticDeclarationKind;
     range: Range;
     selectionRange: Range;
+    completed?: boolean;
 }
 
 export interface SemanticEnterDeclarationEvent {
