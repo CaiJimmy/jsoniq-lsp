@@ -2,16 +2,15 @@ package org.jsoniq.lsp.rumble.handlers;
 
 import org.jsoniq.lsp.rumble.messages.Request;
 import org.jsoniq.lsp.rumble.messages.ResponseBody;
-import org.rumbledb.api.Rumble;
 
 public class Handshake implements RequestHandler {
+    private static final String RUMBLE_VERSION = "2.0.0";
 
     private record Response(String rumbleVersion) implements ResponseBody {
     }
 
     static String getRumbleVersion() {
-        return Rumble.class.getPackage().getImplementationVersion() == null ? "unknown"
-                : Rumble.class.getPackage().getImplementationVersion();
+        return RUMBLE_VERSION;
     }
 
     @Override
