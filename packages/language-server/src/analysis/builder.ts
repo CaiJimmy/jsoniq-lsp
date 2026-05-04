@@ -1,4 +1,4 @@
-import { Position, type Range } from "vscode-languageserver";
+import { Diagnostic, DiagnosticSeverity, Position, type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { parseDocument } from "server/parser/index.js";
@@ -18,7 +18,6 @@ import {
     type Definition,
     type JsoniqAnalysis,
     type SymbolIndexEntry,
-    type Reference,
     type ResolvedReference,
     type SourceDefinition,
     isSourceDefinition,
@@ -27,7 +26,7 @@ import {
 class AnalysisBuilder {
     private readonly definitions: SourceDefinition[] = [];
     private readonly references: ResolvedReference[] = [];
-    private readonly unresolvedReferences: Reference[] = [];
+    private readonly diagnostics: Diagnostic[] = [];
     private readonly symbolIndex: SymbolIndexEntry[] = [];
     private readonly pendingDeclarations = new PendingDeclarations();
     private readonly moduleScope: Scope;
@@ -79,7 +78,7 @@ class AnalysisBuilder {
             rootScope: this.moduleScope,
             definitions: this.definitions,
             references: this.references,
-            unresolvedReferences: this.unresolvedReferences,
+            diagnostics: this.diagnostics,
             symbolIndex: this.symbolIndex,
         };
     }
@@ -148,9 +147,11 @@ class AnalysisBuilder {
     private recordReference(name: string, range: Range): void {
         const declaration = this.resolve(name);
         if (declaration === undefined) {
-            this.unresolvedReferences.push({
-                name,
+            this.diagnostics.push({
+                severity: DiagnosticSeverity.Warning,
+                message: `Reference to undefined variable '${name}'`,
                 range,
+                code: "unresolved-variable",
             });
             return;
         }

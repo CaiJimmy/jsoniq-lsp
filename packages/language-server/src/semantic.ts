@@ -20,18 +20,7 @@ const defaultLibraryModifierMask = 1 << 1;
 
 export async function collectSemanticDiagnostics(document: TextDocument): Promise<Diagnostic[]> {
     const analysis = await getAnalysis(document);
-    const diagnostics: Diagnostic[] = [];
-
-    for (const reference of analysis.unresolvedReferences) {
-        diagnostics.push({
-            severity: DiagnosticSeverity.Error,
-            range: reference.range,
-            message: `Unresolved variable reference '${reference.name}'.`,
-            source: "jsoniq-semantic",
-        });
-    }
-
-    return diagnostics;
+    return analysis.diagnostics;
 }
 
 function addSemanticToken(

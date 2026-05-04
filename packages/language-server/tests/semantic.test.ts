@@ -13,8 +13,8 @@ describe("JSONiq semantic diagnostics", () => {
 
         const diagnostics = await collectSemanticDiagnostics(document);
 
-        expect(diagnostics.map((diagnostic) => diagnostic.message)).toEqual([
-            "Unresolved variable reference '$missing'.",
+        expect(diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
+            "unresolved-variable",
         ]);
     });
 

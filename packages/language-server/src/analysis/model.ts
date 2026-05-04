@@ -1,4 +1,4 @@
-import type { Range } from "vscode-languageserver";
+import type { Diagnostic, Range } from "vscode-languageserver";
 
 import type { BuiltinFunctionDefinition } from "../wrapper/builtin-functions.js";
 import type {
@@ -82,7 +82,7 @@ export interface JsoniqAnalysis {
     // All resolved references in traversal order.
     references: ResolvedReference[];
 
-    unresolvedReferences: Reference[];
+    diagnostics: Diagnostic[];
 
     // Declarations and references, sorted by source position.
     symbolIndex: SymbolIndexEntry[];
