@@ -6,14 +6,14 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
-    findVariableOccurrenceNearPosition,
+    findSymbolAtPosition,
 } from "./analysis/queries.js";
 import { getAnalysis } from "./analysis/service.js";
 import { isSourceDefinition, type Definition } from "./analysis/model.js";
 
 export async function findHover(document: TextDocument, position: Position): Promise<Hover | null> {
     const analysis = await getAnalysis(document);
-    const occurrence = findVariableOccurrenceNearPosition(analysis, position);
+    const occurrence = findSymbolAtPosition(analysis, position);
 
     if (occurrence === undefined || occurrence.declaration === undefined) {
         return null;

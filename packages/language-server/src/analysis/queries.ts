@@ -17,7 +17,7 @@ export async function getVisibleDeclarationsAtPosition(document: TextDocument, p
     return [...scope.listVisibleDefinitions(positionOffset).values()];
 }
 
-export function findVariableOccurrenceAtPosition(
+export function findSymbolAtPosition(
     analysis: JsoniqAnalysis,
     position: Position,
 ): SymbolIndexEntry | undefined {
@@ -34,29 +34,4 @@ export function findVariableOccurrenceAtPosition(
     }
 
     return undefined;
-}
-
-export function findVariableOccurrenceNearPosition(
-    analysis: JsoniqAnalysis,
-    position: Position,
-): SymbolIndexEntry | undefined {
-    const exact = findVariableOccurrenceAtPosition(analysis, position);
-    if (exact !== undefined) {
-        return exact;
-    }
-
-    if (position.character > 0) {
-        const previous = findVariableOccurrenceAtPosition(analysis, {
-            line: position.line,
-            character: position.character - 1,
-        });
-        if (previous !== undefined) {
-            return previous;
-        }
-    }
-
-    return findVariableOccurrenceAtPosition(analysis, {
-        line: position.line,
-        character: position.character + 1,
-    });
 }

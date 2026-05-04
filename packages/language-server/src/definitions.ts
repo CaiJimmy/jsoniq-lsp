@@ -5,7 +5,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
-    findVariableOccurrenceNearPosition,
+    findSymbolAtPosition,
 } from "./analysis/queries.js";
 import { getAnalysis } from "./analysis/service.js";
 import { isSourceDefinition } from "./analysis/model.js";
@@ -19,7 +19,7 @@ import { isSourceDefinition } from "./analysis/model.js";
  */
 export async function findDefinitionLocation(document: TextDocument, position: Position): Promise<Location | null> {
     const analysis = await getAnalysis(document);
-    const occurrence = findVariableOccurrenceNearPosition(analysis, position);
+    const occurrence = findSymbolAtPosition(analysis, position);
     const declaration = occurrence?.declaration;
 
     if (!isSourceDefinition(declaration)) {

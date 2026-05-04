@@ -5,7 +5,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
-    findVariableOccurrenceNearPosition,
+    findSymbolAtPosition,
 } from "./analysis/queries.js";
 import { getAnalysis } from "./analysis/service.js";
 import { isSourceDefinition } from "./analysis/model.js";
@@ -24,7 +24,7 @@ export async function findReferenceLocations(
     includeDeclaration: boolean,
 ): Promise<Location[]> {
     const analysis = await getAnalysis(document);
-    const occurrence = findVariableOccurrenceNearPosition(analysis, position);
+    const occurrence = findSymbolAtPosition(analysis, position);
     const targetDeclaration = occurrence?.declaration;
 
     if (!isSourceDefinition(targetDeclaration)) {

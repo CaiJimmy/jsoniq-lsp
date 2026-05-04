@@ -4,7 +4,7 @@ import {
     buildAnalysis,
 } from "server/analysis/builder.js";
 import {
-    findVariableOccurrenceAtPosition,
+    findSymbolAtPosition,
     getVisibleDeclarationsAtPosition,
 } from "server/analysis/queries.js";
 import { isSourceDefinition } from "server/analysis/model.js";
@@ -161,7 +161,7 @@ describe("JSONiq variable scope analysis", () => {
 
         expect(parameter.references.map((reference) => reference.range.start.line)).toEqual([1, 2]);
 
-        const occurrence = findVariableOccurrenceAtPosition(analysis, { line: 2, character: 14 });
+        const occurrence = findSymbolAtPosition(analysis, { line: 2, character: 14 });
 
         expect(occurrence?.reference).toBeDefined();
         expect(occurrence?.declaration.name).toBe("$x");
@@ -186,7 +186,7 @@ describe("JSONiq variable scope analysis", () => {
 
         expect(parameter.references.map((reference) => reference.range.start.line)).toEqual([1, 1]);
 
-        const occurrence = findVariableOccurrenceAtPosition(analysis, { line: 1, character: 13 });
+        const occurrence = findSymbolAtPosition(analysis, { line: 1, character: 13 });
 
         expect(occurrence?.reference).toBeDefined();
         expect(occurrence?.declaration.name).toBe("$x");

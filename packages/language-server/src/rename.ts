@@ -7,7 +7,7 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
-    findVariableOccurrenceNearPosition,
+    findSymbolAtPosition,
 } from "./analysis/queries.js";
 import { getAnalysis } from "./analysis/service.js";
 import { type JsoniqAnalysis, type SourceDefinition, isSourceDefinition } from "./analysis/model.js";
@@ -101,7 +101,7 @@ function findRenameTarget(
     analysis: JsoniqAnalysis,
     position: Position,
 ): RenameTarget | null {
-    const occurrence = findVariableOccurrenceNearPosition(analysis, position);
+    const occurrence = findSymbolAtPosition(analysis, position);
     if (occurrence === undefined) {
         return null;
     }
