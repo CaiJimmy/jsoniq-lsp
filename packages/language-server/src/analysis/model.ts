@@ -28,6 +28,9 @@ export interface BaseSourceDefinition extends BaseDefinition {
     // Range of the declaration name token.
     selectionRange: Range;
 
+    // Position where this declaration becomes visible.
+    visibleFrom: Position;
+
     // Position where this definition goes out of scope.
     scopeEnd: Position;
 

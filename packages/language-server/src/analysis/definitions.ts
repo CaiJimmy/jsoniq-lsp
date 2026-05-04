@@ -24,6 +24,9 @@ export function createSourceDefinition(
             ...base,
             kind: "function",
             parameters: [],
+
+            /// For function declarations, the declaration becomes visible after the symbol name
+            visibleFrom: declaration.selectionRange.end,
         } satisfies SourceFunctionDefinition;
     }
 
@@ -36,6 +39,7 @@ export function createSourceDefinition(
             ...base,
             kind: "parameter",
             function: containingFunction,
+            visibleFrom: declaration.range.end,
         } satisfies SourceParameterDefinition;
     }
 
@@ -44,11 +48,13 @@ export function createSourceDefinition(
         return {
             ...base,
             kind: declaration.kind,
+            visibleFrom: declaration.range.end,
         } satisfies SourceDefinition;
     }
 
     return {
         ...base,
         kind: declaration.kind,
+        visibleFrom: declaration.range.end,
     } satisfies SourceVariableDefinition;
 }
