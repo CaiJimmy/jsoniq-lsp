@@ -8,7 +8,6 @@ import {
     type JsoniqAnalysis,
     type SymbolIndexEntry,
     type SourceDefinition,
-    isSourceFunctionDefinition,
 } from "./model.js";
 import { getAnalysis } from "./service.js";
 
@@ -44,14 +43,8 @@ function isDeclarationVisibleAtOffset(
     declaration: SourceDefinition,
     queryOffset: number,
 ): boolean {
-    if (isSourceFunctionDefinition(declaration)) {
-        return document.offsetAt(declaration.selectionRange.end) < queryOffset;
-    }
-
-    const declarationEndOffset = document.offsetAt(declaration.range.end);
-
-    return declarationEndOffset < queryOffset
-        && source.slice(declarationEndOffset, queryOffset).trim() !== "";
+    return document.offsetAt(declaration.visibleFrom) < queryOffset
+        && source.slice(document.offsetAt(declaration.visibleFrom), queryOffset).trim() !== "";
 }
 
 export function findVariableOccurrenceAtPosition(
