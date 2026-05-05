@@ -1,7 +1,7 @@
 import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 
 import { createLogger } from "server/utils/logger.js";
-import { resolveWrapperLaunchConfig } from "./executable/index.js";
+import { type WrapperResolutionOptions, resolveWrapperLaunchConfig } from "./executable/index.js";
 import { REQUEST_TYPE_HANDSHAKE } from "./handshake.js";
 import type {
     RequestPayloadByType,
@@ -17,6 +17,7 @@ type ResponseByType = {
 
 type AnyWrapperResponse = ResponseByType[WrapperRequestType];
 const logger = createLogger("wrapper:client");
+let wrapperResolutionOptions: WrapperResolutionOptions = {};
 
 interface PendingRequest {
     expectedResponseType: WrapperRequestType;
@@ -53,7 +54,7 @@ class RumbleWrapperClient {
 
     private async startAndHandshake(): Promise<void> {
         if (this.child === undefined) {
-            const launchConfig = await resolveWrapperLaunchConfig();
+            const launchConfig = await resolveWrapperLaunchConfig(wrapperResolutionOptions);
             logger.info(`Launching wrapper with args: ${launchConfig.args.join(" ")}`);
 
             this.child = spawn("java", launchConfig.args, {
@@ -256,6 +257,10 @@ class RumbleWrapperClient {
     public getRumbleVersion(): string | null {
         return this.rumbleVersion;
     }
+}
+
+export function setWrapperResolutionOptions(options: WrapperResolutionOptions): void {
+    wrapperResolutionOptions = options;
 }
 
 let instance: RumbleWrapperClient | null = null;

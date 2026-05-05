@@ -18,9 +18,12 @@ import { findHover } from "./hover.js";
 import { findCompletions } from "./completion.js";
 import { clearTypeInferenceCache } from "./wrapper/type-inference.js";
 import { collectTypeDiagnostics } from "./type-diagnostics.js";
+import { initializeCustomNotifications } from "./notifications/index.js";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
+
+initializeCustomNotifications(connection);
 
 async function refreshDiagnostics(uri: string): Promise<void> {
     const document = documents.get(uri);
