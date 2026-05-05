@@ -9,28 +9,31 @@ import {
     findSymbolAtPosition,
 } from "./analysis/queries.js";
 import { getAnalysis } from "./analysis/service.js";
-import { isSourceDefinition, type Definition } from "./analysis/model.js";
+import { isSourceDefinition, type Definition, type SourceDefinition } from "./analysis/model.js";
+import { getTypeInferenceIndex, TypeInferenceIndex } from "./type-inference/service.js";
+import { formatInferredType } from "./type-inference/format.js";
 
 export async function findHover(document: TextDocument, position: Position): Promise<Hover | null> {
-    const analysis = await getAnalysis(document, { typeInference: true });
+    const analysis = await getAnalysis(document);
     const occurrence = findSymbolAtPosition(analysis, position);
 
     if (occurrence === undefined || occurrence.declaration === undefined) {
         return null;
     }
 
+    const typeInference = await getTypeInferenceIndex(document);
     const declaration = occurrence.declaration;
-    
+
     return {
         range: occurrence.range,
         contents: {
             kind: MarkupKind.Markdown,
-            value: createHoverContent(declaration),
+            value: createHoverContent(typeInference, declaration),
         },
     };
 }
 
-function createHoverContent(declaration: Definition): string {
+function createHoverContent(typeInference: TypeInferenceIndex, declaration: Definition): string {
     if (isSourceDefinition(declaration)) {
         const declarationLine = declaration.selectionRange.start.line + 1;
 
@@ -40,7 +43,7 @@ function createHoverContent(declaration: Definition): string {
             "```",
             `kind: \`${declaration.kind}\``,
             `declared at line ${declarationLine}`,
-            `inferred type: \`${declaration.inferredType ?? "unknown"}\``,
+            `inferred type: \`${formatOptionalInferredType(typeInference, declaration)}\``,
         ].join("\n");
     }
     else {
@@ -52,4 +55,9 @@ function createHoverContent(declaration: Definition): string {
             `(builtin function)`,
         ].join("\n");
     }
+}
+
+function formatOptionalInferredType(typeInference: TypeInferenceIndex, declaration: SourceDefinition): string {
+    const inferredType = typeInference.get(declaration);
+    return inferredType === undefined ? "unknown" : formatInferredType(inferredType);
 }

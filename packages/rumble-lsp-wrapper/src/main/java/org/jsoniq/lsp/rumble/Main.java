@@ -133,7 +133,7 @@ public class Main {
         } catch (JsonProcessingException exception) {
             System.out
                     .println(
-                            "{\"variableTypes\":[],\"functionTypes\":[],\"builtinFunctions\":{},\"error\":\"Failed to serialize wrapper response.\"}");
+                            "{\"types\":[],\"builtinFunctions\":{},\"error\":\"Failed to serialize wrapper response.\"}");
         }
         System.exit(exitCode);
     }

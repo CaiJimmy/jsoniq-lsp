@@ -4,10 +4,6 @@ import org.jsoniq.lsp.rumble.handlers.TypeInferencer;
 import org.jsoniq.lsp.rumble.handlers.TypeInferencer.VariableKind;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -15,7 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TypeInferencerTest {
-
     private final TypeInferencer inferencer = new TypeInferencer();
 
     private TypeInferencer.Result inferWithoutThrow(String query) {
@@ -26,8 +21,7 @@ class TypeInferencerTest {
     void inferEmptyQueryReturnsNoErrorAndNoTypes() {
         TypeInferencer.Result result = inferWithoutThrow("");
 
-        assertTrue(result.variableTypes().isEmpty());
-        assertTrue(result.functionTypes().isEmpty());
+        assertTrue(result.types().isEmpty());
         assertTrue(result.typeErrors().isEmpty());
     }
 
@@ -38,14 +32,10 @@ class TypeInferencerTest {
         TypeInferencer.Result result = inferWithoutThrow(query);
         assertTrue(result.typeErrors().isEmpty());
 
-        Optional<TypeInferencer.VariableType> letVariableType = result.variableTypes()
-                .stream()
-                .filter(type -> VariableKind.Let.equals(type.kind()))
-                .filter(type -> "$x".equals(type.name()))
-                .findFirst();
-
-        assertTrue(letVariableType.isPresent());
-        assertEquals("xs:integer", letVariableType.get().type());
+        assertTrue(variableTypes(result)
+                .anyMatch(type -> VariableKind.Let.equals(type.variableKind())
+                        && "$x".equals(type.name())
+                        && "xs:integer".equals(type.sequenceType())));
     }
 
     @Test
@@ -57,14 +47,10 @@ class TypeInferencerTest {
 
         TypeInferencer.Result result = inferWithoutThrow(query);
 
-        Optional<TypeInferencer.VariableType> declaredVariableType = result.variableTypes()
-                .stream()
-                .filter(type -> VariableKind.Declare.equals(type.kind()))
-                .filter(type -> "$a".equals(type.name()))
-                .findFirst();
-
-        assertTrue(declaredVariableType.isPresent());
-        assertTrue(declaredVariableType.get().type().contains("xs:integer"));
+        assertTrue(variableTypes(result)
+                .anyMatch(type -> VariableKind.Declare.equals(type.variableKind())
+                        && "$a".equals(type.name())
+                        && type.sequenceType().contains("xs:integer")));
     }
 
     @Test
@@ -72,18 +58,17 @@ class TypeInferencerTest {
         String query = "declare function local:f($a as integer, $b) { $a + 1 };";
 
         TypeInferencer.Result result = inferWithoutThrow(query);
-        assertFalse(result.functionTypes().isEmpty());
+        assertFalse(result.types().isEmpty());
         assertTrue(result.typeErrors().isEmpty());
 
-        Optional<TypeInferencer.FunctionType> functionType = result.functionTypes()
-                .stream()
+        TypeInferencer.FunctionType functionType = functionTypes(result)
                 .filter(type -> "local:f".equals(type.name()))
-                .findFirst();
+                .findFirst()
+                .orElseThrow();
 
-        assertTrue(functionType.isPresent());
-        assertEquals("xs:integer", functionType.get().parameterTypes().get(0).type());
-        assertEquals("item*", functionType.get().parameterTypes().get(1).type());
-        assertEquals("item*", functionType.get().returnType());
+        assertEquals("xs:integer", functionType.parameters().get(0).sequenceType());
+        assertEquals("item*", functionType.parameters().get(1).sequenceType());
+        assertEquals("item*", functionType.returnType());
     }
 
     @Test
@@ -104,15 +89,8 @@ class TypeInferencerTest {
         TypeInferencer.Result result = inferWithoutThrow(query);
         assertTrue(result.typeErrors().isEmpty());
 
-        Set<String> xTypes = result.variableTypes()
-                .stream()
-                .filter(type -> VariableKind.Let.equals(type.kind()))
-                .filter(type -> "$x".equals(type.name()))
-                .map(TypeInferencer.VariableType::type)
-                .collect(Collectors.toSet());
-
-        assertTrue(xTypes.contains("xs:integer"));
-        assertTrue(xTypes.contains("xs:string"));
+        assertTrue(variableTypes(result).anyMatch(type -> "xs:integer".equals(type.sequenceType())));
+        assertTrue(variableTypes(result).anyMatch(type -> "xs:string".equals(type.sequenceType())));
     }
 
     @Test
@@ -126,7 +104,7 @@ class TypeInferencerTest {
 
         TypeInferencer.Result result = inferWithoutThrow(query);
         assertFalse(result.typeErrors().isEmpty());
-        assertFalse(result.functionTypes().isEmpty());
+        assertFalse(result.types().isEmpty());
 
         TypeInferencer.TypeError error = result.typeErrors().get(0);
         assertEquals("XPTY0004", error.code());
@@ -151,6 +129,20 @@ class TypeInferencerTest {
         assertTrue(error.message().contains("arities are not allowed for additive expressions"));
         assertEquals(1, error.position().line());
         assertEquals(4, error.position().character());
+    }
+
+    private static java.util.stream.Stream<TypeInferencer.VariableType> variableTypes(TypeInferencer.Result result) {
+        return result.types()
+                .stream()
+                .filter(TypeInferencer.VariableType.class::isInstance)
+                .map(TypeInferencer.VariableType.class::cast);
+    }
+
+    private static java.util.stream.Stream<TypeInferencer.FunctionType> functionTypes(TypeInferencer.Result result) {
+        return result.types()
+                .stream()
+                .filter(TypeInferencer.FunctionType.class::isInstance)
+                .map(TypeInferencer.FunctionType.class::cast);
     }
 
 }

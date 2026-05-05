@@ -13,21 +13,34 @@ export type WrapperVariableKind =
     | "group-by"
     | "count";
 
-export interface WrapperVariableType {
-    name: string;
-    type: string;
-    kind: WrapperVariableKind;
+export interface InferredSequenceType {
+    sequenceType: string;
 }
 
-export interface WrapperFunctionType {
-    position: Position;
-    name: string;
-    parameterTypes: Array<{
+export interface InferredFunctionType {
+    parameters: Array<{
         name: string;
-        type: string;
+        sequenceType: string;
     }>;
     returnType: string;
 }
+
+export type InferredType = InferredSequenceType | InferredFunctionType;
+
+export interface InferredVariableTypeEntry extends InferredSequenceType {
+    kind: "variable";
+    variableKind: WrapperVariableKind;
+    position: Position;
+    name: string;
+}
+
+export interface InferredFunctionTypeEntry extends InferredFunctionType {
+    kind: "function";
+    position: Position;
+    name: string;
+}
+
+export type InferredTypeEntry = InferredVariableTypeEntry | InferredFunctionTypeEntry;
 
 export interface WrapperTypeError {
     code: string;
@@ -37,8 +50,7 @@ export interface WrapperTypeError {
 }
 
 export interface TypeInferenceResult {
-    variableTypes: WrapperVariableType[];
-    functionTypes: WrapperFunctionType[];
+    types: InferredTypeEntry[];
     typeErrors: WrapperTypeError[];
 }
 
@@ -71,8 +83,7 @@ const FALLBACK_TYPE_INFERENCE_RESPONSE: TypeInferenceResponse = {
     id: -1,
     responseType: REQUEST_TYPE_INFER_TYPES,
     body: {
-        variableTypes: [],
-        functionTypes: [],
+        types: [],
         typeErrors: [],
     },
     error: "Wrapper request failed.",

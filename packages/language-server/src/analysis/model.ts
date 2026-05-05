@@ -30,8 +30,6 @@ export interface BaseSourceDefinition extends BaseDefinition {
     visibleFrom: number | null;
 
     isBuiltin: false;
-
-    inferredType?: string;
 }
 
 export interface SourceVariableDefinition extends BaseSourceDefinition {

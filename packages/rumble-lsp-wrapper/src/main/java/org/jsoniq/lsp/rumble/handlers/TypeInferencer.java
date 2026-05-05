@@ -27,15 +27,10 @@ import java.nio.charset.StandardCharsets;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
 public final class TypeInferencer implements RequestHandler {
-    public static final Comparator<Position> POSITION_COMPARATOR = Comparator
-            .comparingInt(Position::line)
-            .thenComparingInt(Position::character);
-
     public record Position(int line, int character) {
     }
 
@@ -60,42 +55,45 @@ public final class TypeInferencer implements RequestHandler {
         }
     }
 
-    /**
-     * Represents the type of a variable.
-     * 
-     * @param line      the line number of the variable declaration
-     * @param character the column number of the variable declaration
-     * @param name      the name of the variable
-     * @param type      the inferred type of the variable
-     * @param kind      the kind of AST node that declares the variable (e.g.,
-     *                  "ForVariableDeclaration", "LetVariableDeclaration", etc.)
-     */
-    public record VariableType(
-            Position position,
-            String name,
-            String type,
-            VariableKind kind) {
-    }
-
     public record ParameterType(
             String name,
-            String type) {
+            String sequenceType) {
     }
 
-    /**
-     * Represents the type of a function.
-     * 
-     * @param line           the line number of the function declaration
-     * @param character      the column number of the function declaration
-     * @param name           the name of the function
-     * @param parameterTypes a map of parameter names to their types
-     * @param returnType     the return type of the function
-     */
-    public record FunctionType(
+    public interface InferredTypeEntry {
+        String kind();
+        Position position();
+        String name();
+    }
+
+    public record VariableType(
+            String kind,
+            VariableKind variableKind,
             Position position,
             String name,
-            List<ParameterType> parameterTypes,
-            String returnType) {
+            String sequenceType) implements InferredTypeEntry {
+        public VariableType(
+                VariableKind variableKind,
+                Position position,
+                String name,
+                String sequenceType) {
+            this("variable", variableKind, position, name, sequenceType);
+        }
+    }
+
+    public record FunctionType(
+            String kind,
+            Position position,
+            String name,
+            List<ParameterType> parameters,
+            String returnType) implements InferredTypeEntry {
+        public FunctionType(
+                Position position,
+                String name,
+                List<ParameterType> parameters,
+                String returnType) {
+            this("function", position, name, parameters, returnType);
+        }
     }
 
     public record TypeError(
@@ -106,12 +104,11 @@ public final class TypeInferencer implements RequestHandler {
     }
 
     public record Result(
-            List<VariableType> variableTypes,
-            List<FunctionType> functionTypes,
+            List<InferredTypeEntry> types,
             List<TypeError> typeErrors) implements ResponseBody {
     }
 
-    public final static Result EMPTY_RESULT = new Result(List.of(), List.of(), List.of());
+    public final static Result EMPTY_RESULT = new Result(List.of(), List.of());
 
     private final RumbleRuntimeConfiguration permissiveConfiguration;
     private final RumbleRuntimeConfiguration strictConfiguration;
@@ -143,15 +140,12 @@ public final class TypeInferencer implements RequestHandler {
             return EMPTY_RESULT;
         }
 
-        List<VariableType> variableTypes = new ArrayList<>();
-        List<FunctionType> functionTypes = new ArrayList<>();
+        List<InferredTypeEntry> types = new ArrayList<>();
         List<TypeError> typeErrors = new ArrayList<>();
 
         try {
             MainModule module = parseMainModule(query, documentUri, this.permissiveConfiguration);
-            visitNodeAndCollectTypes(module, variableTypes, functionTypes);
-            variableTypes.sort((v1, v2) -> POSITION_COMPARATOR.compare(v1.position(), v2.position()));
-            functionTypes.sort((f1, f2) -> POSITION_COMPARATOR.compare(f1.position(), f2.position()));
+            visitNodeAndCollectTypes(module, types);
         } catch (Throwable throwable) {
             /// Because we are using the permissive configuration, the only kind of error we
             /// expect here are parsing errors
@@ -166,7 +160,7 @@ public final class TypeInferencer implements RequestHandler {
             typeErrors.add(toTypeError(exception));
         }
 
-        return new Result(variableTypes, functionTypes, typeErrors);
+        return new Result(types, typeErrors);
     }
 
     private static MainModule parseMainModule(
@@ -214,36 +208,33 @@ public final class TypeInferencer implements RequestHandler {
     /**
      * Recursively visits the AST nodes and collects variable and function types.
      * 
-     * @param node          the current AST node being visited
-     * @param variableTypes the list to collect variable types into
-     * @param functionTypes the list to collect function types into
+     * @param node  the current AST node being visited
+     * @param types the list to collect inferred types into
      */
     private static void visitNodeAndCollectTypes(
             Node node,
-            List<VariableType> variableTypes,
-            List<FunctionType> functionTypes) {
+            List<InferredTypeEntry> types) {
         if (node == null) {
             return;
         }
 
-        collectFunctionType(node, variableTypes, functionTypes);
-        collectVariableType(node, variableTypes);
+        collectFunctionType(node, types);
+        collectVariableType(node, types);
 
         for (Node child : node.getChildren()) {
-            visitNodeAndCollectTypes(child, variableTypes, functionTypes);
+            visitNodeAndCollectTypes(child, types);
         }
     }
 
     /**
      * Collects function type from the given AST node if it declares a function
      * 
-     * @param node          the AST node to check for function declarations
-     * @param functionTypes the list to collect function types into
+     * @param node  the AST node to check for function declarations
+     * @param types the list to collect inferred types into
      */
     private static void collectFunctionType(
             Node node,
-            List<VariableType> variableTypes,
-            List<FunctionType> functionTypes) {
+            List<InferredTypeEntry> types) {
         if (!(node instanceof FunctionDeclaration functionDeclaration)) {
             return;
         }
@@ -276,26 +267,24 @@ public final class TypeInferencer implements RequestHandler {
             returnType = SequenceType.createSequenceType("item*");
         }
 
-        functionTypes.add(new FunctionType(
-                createPosition(metadata),
-                functionDeclaration.getFunctionIdentifier().getName().toString(),
-                parameterTypes,
-                returnType.toString()));
+        Position position = createPosition(metadata);
+        String functionName = functionDeclaration.getFunctionIdentifier().getName().toString();
+        types.add(new FunctionType(position, functionName, parameterTypes, returnType.toString()));
     }
 
     /**
      * Collects variable types from the given AST node if it declares variables
      * 
-     * @param node          the AST node to check for variable declarations
-     * @param variableTypes the list to collect variable types into
+     * @param node  the AST node to check for variable declarations
+     * @param types the list to collect inferred types into
      */
     private static void collectVariableType(
             Node node,
-            List<VariableType> variableTypes) {
+            List<InferredTypeEntry> types) {
         if (node instanceof VariableDeclaration variableDeclaration) {
             /// Global variable declaration does not Clause type, we need to handle it
             /// separately
-            addDeclaredVariableType(variableDeclaration, variableTypes);
+            addDeclaredVariableType(variableDeclaration, types);
             return;
         }
 
@@ -320,7 +309,7 @@ public final class TypeInferencer implements RequestHandler {
                     typeContext,
                     forClause.getVariableName(),
                     VariableKind.For,
-                    variableTypes);
+                    types);
 
             // Positional variable is optional, so we check if it exists before trying to
             // add its type
@@ -330,7 +319,7 @@ public final class TypeInferencer implements RequestHandler {
                         typeContext,
                         positionalVariableName,
                         VariableKind.ForPosition,
-                        variableTypes);
+                        types);
             }
             return;
         }
@@ -340,7 +329,7 @@ public final class TypeInferencer implements RequestHandler {
                     typeContext,
                     letClause.getVariableName(),
                     VariableKind.Let,
-                    variableTypes);
+                    types);
             return;
         }
 
@@ -349,7 +338,7 @@ public final class TypeInferencer implements RequestHandler {
                     typeContext,
                     countClause.getCountVariableName(),
                     VariableKind.Count,
-                    variableTypes);
+                    types);
             return;
         }
 
@@ -359,14 +348,14 @@ public final class TypeInferencer implements RequestHandler {
                         typeContext,
                         groupByVariable.getVariableName(),
                         VariableKind.GroupBy,
-                        variableTypes);
+                        types);
             }
         }
     }
 
     private static void addDeclaredVariableType(
             VariableDeclaration variableDeclaration,
-            List<VariableType> variableTypes) {
+            List<InferredTypeEntry> types) {
         Name variableName = variableDeclaration.getVariableName();
         ExceptionMetadata metadata = variableDeclaration.getMetadata();
         if (variableName == null || metadata == null) {
@@ -374,43 +363,39 @@ public final class TypeInferencer implements RequestHandler {
         }
 
         SequenceType variableType = variableDeclaration.getSequenceType();
-        variableTypes.add(new VariableType(
-                createPosition(metadata),
+        Position position = createPosition(metadata);
+        types.add(new VariableType(
+                VariableKind.Declare,
+                position,
                 "$" + variableName.toString(),
-                variableType.toString(),
-                VariableKind.Declare));
+                variableType.toString()));
     }
 
     /**
      * Adds a variable type to the list of variable types based on the static
      * context and variable name.
      * 
-     * @param context       the static context to retrieve the variable type from
-     * @param variableName  the name of the variable to retrieve the type for
-     * @param kind          the kind of AST node that declares the variable (e.g.,
-     *                      "ForVariableDeclaration")
-     * @param variableTypes the list to add the variable type to
-     * @return true if the variable type was successfully added, false otherwise
+     * @param context      the static context to retrieve the variable type from
+     * @param variableName the name of the variable to retrieve the type for
+     * @param kind         the kind of AST node that declares the variable (e.g.,
+     *                     "ForVariableDeclaration")
+     * @param types        the list to add the variable type to
      */
-    private static boolean addVariableTypeFromContext(
+    private static void addVariableTypeFromContext(
             StaticContext context,
             Name variableName,
             VariableKind kind,
-            List<VariableType> variableTypes) {
+            List<InferredTypeEntry> types) {
         if (context == null || variableName == null) {
-            return false;
+            return;
         }
 
         try {
             SequenceType variableType = context.getVariableSequenceType(variableName);
             ExceptionMetadata metadata = context.getVariableMetadata(variableName);
-            variableTypes
-                    .add(new VariableType(createPosition(metadata), "$" + variableName.toString(),
-                            variableType.toString(),
-                            kind));
-            return true;
+            Position position = createPosition(metadata);
+            types.add(new VariableType(kind, position, "$" + variableName.toString(), variableType.toString()));
         } catch (Throwable ignored) {
-            return false;
         }
     }
 
