@@ -29,6 +29,11 @@ interface PendingRequest {
     timeout: NodeJS.Timeout;
 }
 
+export type WrapperMemoryUsage = {
+    pid: number;
+    rssBytes: number;
+};
+
 class RumbleWrapperClient {
     private child: ChildProcessWithoutNullStreams | undefined;
     private nextRequestId = 1;
@@ -261,7 +266,7 @@ class RumbleWrapperClient {
         return this.rumbleVersion;
     }
 
-    public async getMemoryUsage(): Promise<{ pid: number; rssBytes: number } | null> {
+    public async getMemoryUsage(): Promise<WrapperMemoryUsage | null> {
         const pid = this.child?.pid;
         if (pid === undefined) {
             return null;

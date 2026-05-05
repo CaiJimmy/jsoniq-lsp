@@ -2,6 +2,7 @@ import { createLogger } from "server/utils/logger.js";
 import { resolveDevLaunchConfig } from "./dev.js";
 import { resolveProdLaunchConfig } from "./prod.js";
 import { DownloadProgressReporter } from "./download.js";
+import { WrapperMemoryUsage } from "../client.js";
 
 const logger = createLogger("wrapper:jar-resolution");
 
@@ -11,10 +12,7 @@ export interface WrapperLaunchConfig {
 
 export interface WrapperResolutionOptions {
     onProgress?: DownloadProgressReporter;
-    memoryUsageReporter?: (usage: {
-        pid: number;
-        rssBytes: number;
-    }) => void;
+    memoryUsageReporter?: (usage: WrapperMemoryUsage) => void;
 }
 
 export async function resolveWrapperLaunchConfig(options: WrapperResolutionOptions = {}): Promise<WrapperLaunchConfig> {
