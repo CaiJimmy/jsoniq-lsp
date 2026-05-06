@@ -17,7 +17,6 @@ import { listBuiltinFunctionDefinitions } from "./wrapper/builtin-functions.js";
 import { collectCompletionIntent } from "./parser/index.js";
 
 const VARIABLE_PREFIX_PATTERN = /\$[A-Za-z0-9_.:-]*$/;
-const NAME_PREFIX_PATTERN = /(?:^|[^$A-Za-z0-9_.:-])[A-Za-z_][A-Za-z0-9_.:-]*$/;
 
 export async function findCompletions(
     document: TextDocument,

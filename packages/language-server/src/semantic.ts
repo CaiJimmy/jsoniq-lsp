@@ -1,5 +1,4 @@
 import {
-    DiagnosticSeverity,
     type Diagnostic,
     SemanticTokensBuilder,
     type SemanticTokens,
