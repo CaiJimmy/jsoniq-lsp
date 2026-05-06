@@ -1,6 +1,18 @@
-import type { BuiltInFunctionListResponseBody, BuiltinFunctionsRequestPayload, REQUEST_TYPE_BUILTIN_FUNCTIONS } from "./builtin-functions.js";
-import type { HandshakeRequestPayload, HandshakeResponseBody, REQUEST_TYPE_HANDSHAKE } from "./handshake.js";
-import type { InferTypesRequestPayload, REQUEST_TYPE_INFER_TYPES, TypeInferenceResult } from "./type-inference.js";
+import type {
+    BuiltInFunctionListResponseBody,
+    BuiltinFunctionsRequestPayload,
+    REQUEST_TYPE_BUILTIN_FUNCTIONS,
+} from "./builtin-functions.js";
+import type {
+    HandshakeRequestPayload,
+    HandshakeResponseBody,
+    REQUEST_TYPE_HANDSHAKE,
+} from "./handshake.js";
+import type {
+    InferTypesRequestPayload,
+    REQUEST_TYPE_INFER_TYPES,
+    TypeInferenceResult,
+} from "./type-inference.js";
 
 export type WrapperRequestPayloadByType = {
     [REQUEST_TYPE_INFER_TYPES]: InferTypesRequestPayload;
@@ -17,13 +29,11 @@ export type RequestPayloadByType = {
 export type WrapperRequestPayload<RequestType extends WrapperRequestType = WrapperRequestType> =
     WrapperRequestPayloadByType[RequestType];
 
-export type WrapperDaemonRequest<RequestType extends WrapperRequestType = WrapperRequestType> =
-    { id: number } & WrapperRequestPayloadByType[RequestType];
+export type WrapperDaemonRequest<RequestType extends WrapperRequestType = WrapperRequestType> = {
+    id: number;
+} & WrapperRequestPayloadByType[RequestType];
 
-export type WrapperDaemonResponse<
-    ResponseType extends WrapperRequestType,
-    ResponseBody,
-> = {
+export type WrapperDaemonResponse<ResponseType extends WrapperRequestType, ResponseBody> = {
     id: number;
     responseType: ResponseType;
     body: ResponseBody;

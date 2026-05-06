@@ -98,7 +98,11 @@ export const KEYWORD_COMPLETIONS: KeywordCompletion[] = [
     keyword(jsoniqParser.Korder, "order by"),
 ];
 
-function keyword(tokenType: number, label = tokenLabel(tokenType), insertText?: string): KeywordCompletion {
+function keyword(
+    tokenType: number,
+    label = tokenLabel(tokenType),
+    insertText?: string,
+): KeywordCompletion {
     return {
         tokenType,
         label,
@@ -108,5 +112,9 @@ function keyword(tokenType: number, label = tokenLabel(tokenType), insertText?: 
 
 function tokenLabel(tokenType: number): string {
     const literalName = jsoniqParser.literalNames[tokenType];
-    return literalName?.replace(/^'|'$/g, "") ?? jsoniqParser.symbolicNames[tokenType] ?? tokenType.toString();
+    return (
+        literalName?.replace(/^'|'$/g, "") ??
+        jsoniqParser.symbolicNames[tokenType] ??
+        tokenType.toString()
+    );
 }

@@ -14,7 +14,6 @@ import {
 import { DocumentUri, TextDocument } from "vscode-languageserver-textdocument";
 import { buildInferenceKey, buildInferenceKeyForDefinition, InferenceKey } from "./key.js";
 
-
 export interface TypeInferenceIndex {
     get(definition: SourceFunctionDefinition): InferredFunctionType | undefined;
     get(definition: SourceParameterDefinition): InferredSequenceType | undefined;
@@ -31,23 +30,29 @@ function buildTypeInferenceIndex(entries: TypeInferenceResult["types"]): TypeInf
 
     for (const entry of entries) {
         if (entry.kind === "function") {
-            const { name: functionName, position: functionPosition, returnType, parameters } = entry;
+            const {
+                name: functionName,
+                position: functionPosition,
+                returnType,
+                parameters,
+            } = entry;
             const functionKey = buildInferenceKey("function", functionPosition, functionName);
 
             result.set(functionKey, { returnType, parameters });
 
             for (const parameter of parameters) {
-                const parameterKey = buildInferenceKey("parameter", functionPosition, functionName, parameter.name);
-                result.set(
-                    parameterKey,
-                    { sequenceType: parameter.sequenceType },
+                const parameterKey = buildInferenceKey(
+                    "parameter",
+                    functionPosition,
+                    functionName,
+                    parameter.name,
                 );
+                result.set(parameterKey, { sequenceType: parameter.sequenceType });
             }
         } else {
-            result.set(
-                buildInferenceKey(entry.variableKind, entry.position, entry.name),
-                { sequenceType: entry.sequenceType },
-            );
+            result.set(buildInferenceKey(entry.variableKind, entry.position, entry.name), {
+                sequenceType: entry.sequenceType,
+            });
         }
     }
 
@@ -62,20 +67,25 @@ function buildTypeInferenceIndex(entries: TypeInferenceResult["types"]): TypeInf
     return { get };
 }
 
-const typeInferenceIndexCache = new Map<DocumentUri, {
-    index: TypeInferenceIndex;
-    version: number;
-}>();
+const typeInferenceIndexCache = new Map<
+    DocumentUri,
+    {
+        index: TypeInferenceIndex;
+        version: number;
+    }
+>();
 
 export async function getTypeInferenceIndex(document: TextDocument): Promise<TypeInferenceIndex> {
     let cache = typeInferenceIndexCache.get(document.uri);
 
     if (cache === undefined || cache.version !== document.version) {
         const typeInferenceResult = await getTypeInference(document);
-        cache = { index: buildTypeInferenceIndex(typeInferenceResult.body.types), version: document.version };
+        cache = {
+            index: buildTypeInferenceIndex(typeInferenceResult.body.types),
+            version: document.version,
+        };
         typeInferenceIndexCache.set(document.uri, cache);
     }
 
     return cache.index;
 }
-

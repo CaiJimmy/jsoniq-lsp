@@ -27,14 +27,14 @@ function addSemanticToken(
     builder: SemanticTokensBuilder,
     selectionRange: Range,
     tokenType: number,
-    tokenModifiers: number
+    tokenModifiers: number,
 ): void {
     builder.push(
         selectionRange.start.line,
         selectionRange.start.character,
         selectionRange.end.character - selectionRange.start.character,
         tokenType,
-        tokenModifiers
+        tokenModifiers,
     );
 }
 

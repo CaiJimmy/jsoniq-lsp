@@ -14,13 +14,17 @@ export interface WrapperResolutionOptions {
     onProgress?: DownloadProgressReporter;
 }
 
-export async function resolveWrapperLaunchConfig(options: WrapperResolutionOptions = {}): Promise<WrapperLaunchConfig> {
+export async function resolveWrapperLaunchConfig(
+    options: WrapperResolutionOptions = {},
+): Promise<WrapperLaunchConfig> {
     const developmentConfig = resolveDevLaunchConfig();
     if (developmentConfig !== undefined) {
         return developmentConfig;
     }
 
-    logger.debug("No development wrapper configuration found, falling back to production configuration.");
+    logger.debug(
+        "No development wrapper configuration found, falling back to production configuration.",
+    );
     return resolveProdLaunchConfig(options);
 }
 

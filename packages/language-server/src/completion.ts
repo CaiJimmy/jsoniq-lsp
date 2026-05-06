@@ -19,7 +19,10 @@ import { collectCompletionIntent } from "./parser/index.js";
 const VARIABLE_PREFIX_PATTERN = /\$[A-Za-z0-9_.:-]*$/;
 const NAME_PREFIX_PATTERN = /(?:^|[^$A-Za-z0-9_.:-])[A-Za-z_][A-Za-z0-9_.:-]*$/;
 
-export async function findCompletions(document: TextDocument, position: Position): Promise<CompletionItem[]> {
+export async function findCompletions(
+    document: TextDocument,
+    position: Position,
+): Promise<CompletionItem[]> {
     const source = document.getText();
     const cursorOffset = document.offsetAt(position);
     const intent = collectCompletionIntent(document, cursorOffset);
@@ -30,38 +33,50 @@ export async function findCompletions(document: TextDocument, position: Position
 
     // Find the prefix of the variable or name being typed, if any.
     // This is used to determine whether to offer variable or name completions, and to limit the completion suggestions to those matching the prefix.
-    const variablePrefix = source.slice(0, cursorOffset).match(VARIABLE_PREFIX_PATTERN)?.[0] ?? null;
+    const variablePrefix =
+        source.slice(0, cursorOffset).match(VARIABLE_PREFIX_PATTERN)?.[0] ?? null;
     const typingVariablePrefix = variablePrefix !== null;
 
     // If we have already typed part of a variable name, we want to replace that prefix with the completion,
-    // This is to avoid inserting the completion after the prefix, which would result in an invalid variable name 
-    const variableReplaceRange = variablePrefix === null
-        ? null
-        : {
-            start: document.positionAt(cursorOffset - variablePrefix.length),
-            end: position,
-        };
+    // This is to avoid inserting the completion after the prefix, which would result in an invalid variable name
+    const variableReplaceRange =
+        variablePrefix === null
+            ? null
+            : {
+                  start: document.positionAt(cursorOffset - variablePrefix.length),
+                  end: position,
+              };
 
     const availableSourceDeclarations = await getVisibleDeclarationsAtPosition(document, position);
-    const variables = intent.allowVariableReferences ? availableSourceDeclarations.filter(v => isSourceVariableDefinition(v) || isSourceParameterDefinition(v)) : [];
-    const functions = intent.allowFunctions ? availableSourceDeclarations.filter(isSourceFunctionDefinition) : [];
+    const variables = intent.allowVariableReferences
+        ? availableSourceDeclarations.filter(
+              (v) => isSourceVariableDefinition(v) || isSourceParameterDefinition(v),
+          )
+        : [];
+    const functions = intent.allowFunctions
+        ? availableSourceDeclarations.filter(isSourceFunctionDefinition)
+        : [];
     const builtinFunctions = intent.allowFunctions ? await getBuiltinFunctionCompletionItems() : [];
     const keywords = keywordCompletions(intent.keywords);
 
     if (intent.allowVariableDeclarations && !typingVariablePrefix) {
-        return [{
-            label: "$",
-            kind: CompletionItemKind.Keyword,
-            detail: "Start a variable declaration",
-        }]
+        return [
+            {
+                label: "$",
+                kind: CompletionItemKind.Keyword,
+                detail: "Start a variable declaration",
+            },
+        ];
     }
 
     return withSortText([
-        ...variables.map(v => {
+        ...variables.map((v) => {
             return {
                 ...toCompletionItem(v),
-                ...(variableReplaceRange !== null ? { textEdit: TextEdit.replace(variableReplaceRange, v.name) } : {}),
-            }
+                ...(variableReplaceRange !== null
+                    ? { textEdit: TextEdit.replace(variableReplaceRange, v.name) }
+                    : {}),
+            };
         }),
         ...functions.map(toCompletionItem),
         ...builtinFunctions,
@@ -91,7 +106,8 @@ async function getBuiltinFunctionCompletionItems(): Promise<CompletionItem[]> {
         const [name, arity] = definition.name.split("#", 2);
         const parameterTypes = definition.signature.parameterTypes.join(", ");
         const functionName = name ?? definition.name;
-        const detailArity = arity === undefined ? "JSONiq builtin function" : `JSONiq builtin function/${arity}`;
+        const detailArity =
+            arity === undefined ? "JSONiq builtin function" : `JSONiq builtin function/${arity}`;
         const signature = `${functionName}(${parameterTypes}) as ${definition.signature.returnType}`;
 
         return {
@@ -103,14 +119,15 @@ async function getBuiltinFunctionCompletionItems(): Promise<CompletionItem[]> {
     });
 }
 
-function keywordCompletions(keywords: Array<{ label: string; insertText?: string }>): CompletionItem[] {
-    return keywords
-        .map((completion) => ({
-            label: completion.label,
-            ...(completion.insertText === undefined ? {} : { insertText: completion.insertText }),
-            kind: CompletionItemKind.Keyword,
-            detail: "JSONiq keyword",
-        }));
+function keywordCompletions(
+    keywords: Array<{ label: string; insertText?: string }>,
+): CompletionItem[] {
+    return keywords.map((completion) => ({
+        label: completion.label,
+        ...(completion.insertText === undefined ? {} : { insertText: completion.insertText }),
+        kind: CompletionItemKind.Keyword,
+        detail: "JSONiq keyword",
+    }));
 }
 
 function withSortText(items: CompletionItem[]): CompletionItem[] {

@@ -47,7 +47,11 @@ export function positionAt(document: TextDocument, needle: string): Position {
  * @param occurrence The 0-based index of the occurrence to find
  * @returns The Position of the nth occurrence of the string in the document, or throws an error if the string is not found
  */
-export function positionAtNth(document: TextDocument, needle: string, occurrence: number): Position {
+export function positionAtNth(
+    document: TextDocument,
+    needle: string,
+    occurrence: number,
+): Position {
     const source = document.getText();
     let offset = -1;
     let fromIndex = 0;

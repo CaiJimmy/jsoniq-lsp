@@ -1,14 +1,9 @@
-import {
-    CodeCompletionCore,
-} from "antlr4-c3";
+import { CodeCompletionCore } from "antlr4-c3";
 import { Token } from "antlr4ng";
 
 import { jsoniqParser } from "./grammar/jsoniqParser.js";
 import type { JsoniqParsedDocument } from "./parse.js";
-import type {
-    CompletionIntent,
-    ParserKeywordCompletion,
-} from "server/parser/types/completion.js";
+import type { CompletionIntent, ParserKeywordCompletion } from "server/parser/types/completion.js";
 import {
     IGNORED_COMPLETION_TOKENS,
     KEYWORD_COMPLETIONS,
@@ -17,7 +12,10 @@ import {
 import { findCaretToken } from "server/parser/utils.js";
 import { createLogger } from "server/utils/logger.js";
 
-export function getCompletionIntent(parsed: JsoniqParsedDocument, cursorOffset: number): CompletionIntent | null {
+export function getCompletionIntent(
+    parsed: JsoniqParsedDocument,
+    cursorOffset: number,
+): CompletionIntent | null {
     return toCompletionIntent(collectCompletionCandidates(parsed, cursorOffset));
 }
 
@@ -28,7 +26,10 @@ interface JSONiqCompletionCandidates {
     ruleIndices: Set<number>;
 }
 
-function collectCompletionCandidates(parsed: JsoniqParsedDocument, cursorOffset: number): JSONiqCompletionCandidates {
+function collectCompletionCandidates(
+    parsed: JsoniqParsedDocument,
+    cursorOffset: number,
+): JSONiqCompletionCandidates {
     const caret = findCaretToken(parsed.tokens, cursorOffset);
     const candidates = getCompletionCandidates(parsed.parser, caret.tokenIndex);
 
@@ -46,8 +47,12 @@ function toCompletionIntent(candidates: JSONiqCompletionCandidates): CompletionI
     const allowVariableDeclarations = isVariableDeclarationContext(candidates);
     const keywords = keywordCompletions(candidates);
 
-    const expectedTokens = [...candidates.tokenTypes].map((tokenType) => jsoniqParser.symbolicNames[tokenType] ?? tokenType);
-    const expectedRules = [...candidates.ruleIndices].map((ruleIndex) => jsoniqParser.ruleNames[ruleIndex] ?? ruleIndex);
+    const expectedTokens = [...candidates.tokenTypes].map(
+        (tokenType) => jsoniqParser.symbolicNames[tokenType] ?? tokenType,
+    );
+    const expectedRules = [...candidates.ruleIndices].map(
+        (ruleIndex) => jsoniqParser.ruleNames[ruleIndex] ?? ruleIndex,
+    );
 
     logger.debug("Completion candidates:", {
         allowFunctions,
@@ -83,27 +88,28 @@ function getCompletionCandidates(parser: jsoniqParser, caretTokenIndex: number) 
 }
 
 function isFunctionReferenceContext(candidates: JSONiqCompletionCandidates): boolean {
-    return hasCandidateRule(candidates, jsoniqParser.RULE_functionCall) 
-        && !hasCandidateRule(candidates, jsoniqParser.RULE_declaredVarRef);
+    return (
+        hasCandidateRule(candidates, jsoniqParser.RULE_functionCall) &&
+        !hasCandidateRule(candidates, jsoniqParser.RULE_declaredVarRef)
+    );
 }
 
 function isVariableReferenceContext(candidates: JSONiqCompletionCandidates): boolean {
-    return hasCandidateRule(candidates, jsoniqParser.RULE_varRef)
-        && !hasCandidateRule(candidates, jsoniqParser.RULE_declaredVarRef);
+    return (
+        hasCandidateRule(candidates, jsoniqParser.RULE_varRef) &&
+        !hasCandidateRule(candidates, jsoniqParser.RULE_declaredVarRef)
+    );
 }
 
 function isVariableDeclarationContext(candidates: JSONiqCompletionCandidates): boolean {
     return hasCandidateRule(candidates, jsoniqParser.RULE_declaredVarRef);
 }
 
-function keywordCompletions(
-    candidates: JSONiqCompletionCandidates,
-): ParserKeywordCompletion[] {
-    return KEYWORD_COMPLETIONS
-        .filter((completion) => hasCandidateToken(candidates, completion.tokenType))
-        .map(({ label, insertText }) => ({
-            label,
-            ...(insertText === undefined ? {} : { insertText }),
-        }));
-    ;
-};
+function keywordCompletions(candidates: JSONiqCompletionCandidates): ParserKeywordCompletion[] {
+    return KEYWORD_COMPLETIONS.filter((completion) =>
+        hasCandidateToken(candidates, completion.tokenType),
+    ).map(({ label, insertText }) => ({
+        label,
+        ...(insertText === undefined ? {} : { insertText }),
+    }));
+}

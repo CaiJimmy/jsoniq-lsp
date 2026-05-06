@@ -84,7 +84,7 @@ class SemanticEventCollector {
             range: rangeFromNode(declarationNode, this.document),
             selectionRange: rangeFromNode(selectionNode, this.document),
         };
-    };
+    }
 
     public scope(range: Range, enter: boolean, scopeKind: ScopeKind): void {
         this.emit({
@@ -95,7 +95,10 @@ class SemanticEventCollector {
     }
 }
 
-export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: TextDocument): readonly SemanticEvent[] {
+export function collectSemanticEvents(
+    tree: ModuleAndThisIsItContext,
+    document: TextDocument,
+): readonly SemanticEvent[] {
     const events = new SemanticEventCollector(document);
 
     const collectDeclarations = (node: ParseTree): SemanticDeclaration[] => {
@@ -103,37 +106,43 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
             const nameNode = node.NCName();
             const name = nameNode.getText().trim();
             if (name !== "") {
-                return [{
-                    name,
-                    kind: "namespace",
-                    range: rangeFromNode(node, document),
-                    selectionRange: rangeFromNode(nameNode, document),
-                }];
+                return [
+                    {
+                        name,
+                        kind: "namespace",
+                        range: rangeFromNode(node, document),
+                        selectionRange: rangeFromNode(nameNode, document),
+                    },
+                ];
             }
         }
 
         if (node instanceof ContextItemDeclContext) {
-            return [{
-                name: "context item",
-                kind: "context-item",
-                range: rangeFromNode(node, document),
-                selectionRange: {
-                    start: rangeFromNode(node.Kcontext(), document).start,
-                    end: rangeFromNode(node.Kitem(), document).end,
+            return [
+                {
+                    name: "context item",
+                    kind: "context-item",
+                    range: rangeFromNode(node, document),
+                    selectionRange: {
+                        start: rangeFromNode(node.Kcontext(), document).start,
+                        end: rangeFromNode(node.Kitem(), document).end,
+                    },
                 },
-            }];
+            ];
         }
 
         if (node instanceof TypeDeclContext) {
             const nameNode = node._type_name ?? node.declaredQName();
             const name = nameNode.getText().trim();
             if (name !== "") {
-                return [{
-                    name,
-                    kind: "type",
-                    range: rangeFromNode(node, document),
-                    selectionRange: rangeFromNode(nameNode, document),
-                }];
+                return [
+                    {
+                        name,
+                        kind: "type",
+                        range: rangeFromNode(node, document),
+                        selectionRange: rangeFromNode(nameNode, document),
+                    },
+                ];
             }
         }
 
@@ -141,12 +150,14 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
             const name = functionNameWithArityOrNull(node);
             const selectionNode = node.declaredQName();
             if (name !== null && selectionNode !== null) {
-                return [{
-                    name,
-                    kind: "function",
-                    range: rangeFromNode(node, document),
-                    selectionRange: rangeFromNode(selectionNode, document),
-                }];
+                return [
+                    {
+                        name,
+                        kind: "function",
+                        range: rangeFromNode(node, document),
+                        selectionRange: rangeFromNode(selectionNode, document),
+                    },
+                ];
             }
         }
 
@@ -154,17 +165,23 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
             const declaredVarRef = node.declaredVarRef();
             const name = varRefNameOrNull(declaredVarRef.varRef());
             if (name !== null) {
-                return [{
-                    name,
-                    kind: "parameter",
-                    range: rangeFromNode(node, document),
-                    selectionRange: rangeFromNode(declaredVarRef, document),
-                }];
+                return [
+                    {
+                        name,
+                        kind: "parameter",
+                        range: rangeFromNode(node, document),
+                        selectionRange: rangeFromNode(declaredVarRef, document),
+                    },
+                ];
             }
         }
 
         if (node instanceof VarDeclContext) {
-            const declaration = events.variable("declare-variable", node, node.declaredVarRef().varRef());
+            const declaration = events.variable(
+                "declare-variable",
+                node,
+                node.declaredVarRef().varRef(),
+            );
             if (declaration !== undefined && node.Ksemicolon().symbol.start < 0) {
                 declaration.completed = false;
             }
@@ -172,9 +189,18 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
         }
 
         if (node instanceof ForVarContext) {
-            return node.declaredVarRef()
-                .map((declaredVarRef, index) => events.variable(index === 0 ? "for" : "for-position", node, declaredVarRef.varRef()))
-                .filter((declaration): declaration is SemanticDeclaration => declaration !== undefined);
+            return node
+                .declaredVarRef()
+                .map((declaredVarRef, index) =>
+                    events.variable(
+                        index === 0 ? "for" : "for-position",
+                        node,
+                        declaredVarRef.varRef(),
+                    ),
+                )
+                .filter(
+                    (declaration): declaration is SemanticDeclaration => declaration !== undefined,
+                );
         }
 
         if (node instanceof LetVarContext) {
@@ -248,7 +274,7 @@ export function collectSemanticEvents(tree: ModuleAndThisIsItContext, document: 
 
 /**
  * Check if given VarRefContext is part of a variable declaration
- * 
+ *
  * Because in the grammar file, varRef is used both for variable declarations and variable references
  * We distinguish them by checking the parent node
  * @param node The VarRefContext to check

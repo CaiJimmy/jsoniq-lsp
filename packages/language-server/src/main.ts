@@ -9,7 +9,11 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { parseDocument } from "./parser/index.js";
-import { collectSemanticDiagnostics, collectSemanticTokens, legend as semanticLegend } from "./semantic.js";
+import {
+    collectSemanticDiagnostics,
+    collectSemanticTokens,
+    legend as semanticLegend,
+} from "./semantic.js";
 import { collectDocumentSymbols } from "./symbols.js";
 import { findDefinitionLocation } from "./definitions.js";
 import { findReferenceLocations } from "./references.js";
@@ -33,20 +37,14 @@ async function refreshDiagnostics(uri: string): Promise<void> {
     }
 
     const syntaxDiagnostics = parseDocument(document).diagnostics;
-    const semanticDiagnostics = syntaxDiagnostics.length === 0
-        ? await collectSemanticDiagnostics(document)
-        : [];
-    const typeDiagnostics = syntaxDiagnostics.length === 0
-        ? await collectTypeDiagnostics(document)
-        : [];
+    const semanticDiagnostics =
+        syntaxDiagnostics.length === 0 ? await collectSemanticDiagnostics(document) : [];
+    const typeDiagnostics =
+        syntaxDiagnostics.length === 0 ? await collectTypeDiagnostics(document) : [];
 
     connection.sendDiagnostics({
         uri: document.uri,
-        diagnostics: [
-            ...syntaxDiagnostics,
-            ...semanticDiagnostics,
-            ...typeDiagnostics,
-        ],
+        diagnostics: [...syntaxDiagnostics, ...semanticDiagnostics, ...typeDiagnostics],
     });
 }
 

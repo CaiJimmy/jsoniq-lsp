@@ -62,7 +62,10 @@ export interface InferTypesRequestPayload {
     documentUri: string;
 }
 
-export type TypeInferenceResponse = WrapperDaemonResponse<typeof REQUEST_TYPE_INFER_TYPES, TypeInferenceResult>;
+export type TypeInferenceResponse = WrapperDaemonResponse<
+    typeof REQUEST_TYPE_INFER_TYPES,
+    TypeInferenceResult
+>;
 
 interface CachedTypeInference {
     version: number;
@@ -104,24 +107,30 @@ export async function getTypeInference(document: TextDocument): Promise<TypeInfe
 
     const body = Buffer.from(document.getText(), "utf8").toString("base64");
 
-    const inferencePromise = getWrapperClient().sendRequest<"inferTypes">({
-        requestType: "inferTypes",
-        body,
-        documentUri: document.uri,
-    }).then((response) => {
-        typeInferenceCache.set(document.uri, {
-            version: document.version,
-            response,
-        });
-        pendingInferenceByUri.delete(document.uri);
+    const inferencePromise = getWrapperClient()
+        .sendRequest<"inferTypes">({
+            requestType: "inferTypes",
+            body,
+            documentUri: document.uri,
+        })
+        .then((response) => {
+            typeInferenceCache.set(document.uri, {
+                version: document.version,
+                response,
+            });
+            pendingInferenceByUri.delete(document.uri);
 
-        logger.debug(`Type inference completed for ${document.uri} (version ${document.version})`);
-        logger.debug(JSON.stringify(response, null, 2));
-        return response;
-    })
+            logger.debug(
+                `Type inference completed for ${document.uri} (version ${document.version})`,
+            );
+            logger.debug(JSON.stringify(response, null, 2));
+            return response;
+        })
         .catch((error) => {
             pendingInferenceByUri.delete(document.uri);
-            logger.warn(`Type inference failed for ${document.uri} (version ${document.version}). Returning fallback response.`);
+            logger.warn(
+                `Type inference failed for ${document.uri} (version ${document.version}). Returning fallback response.`,
+            );
             logger.debug(`Error: ${error instanceof Error ? error.message : String(error)}`);
             return FALLBACK_TYPE_INFERENCE_RESPONSE;
         });

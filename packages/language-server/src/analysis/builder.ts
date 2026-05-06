@@ -2,16 +2,10 @@ import { DiagnosticSeverity, Position, type Range } from "vscode-languageserver"
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { parseDocument } from "server/parser/index.js";
-import type {
-    SemanticDeclaration,
-    ScopeKind,
-} from "server/parser/types/semantic-events.js";
+import type { SemanticDeclaration, ScopeKind } from "server/parser/types/semantic-events.js";
 import { findBuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
 import { comparePositions } from "server/utils/position.js";
-import {
-    isVisibleOnEnter,
-    PendingDeclarations,
-} from "./declarations.js";
+import { isVisibleOnEnter, PendingDeclarations } from "./declarations.js";
 import { createSourceDefinition } from "./definitions.js";
 import { Scope } from "./scope.js";
 import {
@@ -74,7 +68,9 @@ class AnalysisBuilder {
             return comparePositions(left.range.end, right.range.end);
         });
 
-        this.analysis.definitions.sort((left, right) => comparePositions(left.range.start, right.range.start));
+        this.analysis.definitions.sort((left, right) =>
+            comparePositions(left.range.start, right.range.start),
+        );
 
         return this.analysis;
     }
@@ -86,12 +82,19 @@ class AnalysisBuilder {
             owner = currentDefinition;
         }
 
-        this.currentScope = this.currentScope.enter(scopeKind, this.document.offsetAt(start), this.document.offsetAt(end), owner);
+        this.currentScope = this.currentScope.enter(
+            scopeKind,
+            this.document.offsetAt(start),
+            this.document.offsetAt(end),
+            owner,
+        );
     }
 
     private popScope(scopeEnd: Range["end"], scopeKind: ScopeKind): void {
         if (this.currentScope.kind !== scopeKind) {
-            throw new Error(`Tried to exit ${scopeKind} scope while inside ${this.currentScope.kind} scope.`);
+            throw new Error(
+                `Tried to exit ${scopeKind} scope while inside ${this.currentScope.kind} scope.`,
+            );
         }
 
         const parent = this.currentScope.parent;
@@ -111,7 +114,11 @@ class AnalysisBuilder {
     }
 
     private enterDeclaration(declaration: SemanticDeclaration): void {
-        const definition = createSourceDefinition(this.document, declaration, this.currentScope.owningFunction);
+        const definition = createSourceDefinition(
+            this.document,
+            declaration,
+            this.currentScope.owningFunction,
+        );
         this.registerDefinition(definition);
         this.pendingDeclarations.enter(declaration, definition);
 

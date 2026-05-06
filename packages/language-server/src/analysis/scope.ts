@@ -1,8 +1,5 @@
 import type { ScopeKind } from "server/parser/types/semantic-events.js";
-import type {
-    SourceDefinition,
-    SourceFunctionDefinition,
-} from "./model.js";
+import type { SourceDefinition, SourceFunctionDefinition } from "./model.js";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 export type AnalysisScopeKind = ScopeKind | "module";
@@ -17,7 +14,7 @@ export class Scope {
         public readonly owner: SourceDefinition | undefined,
         public readonly startOffset: number,
         public readonly endOffset: number,
-    ) { }
+    ) {}
 
     public static module(document: TextDocument): Scope {
         return new Scope("module", undefined, undefined, 0, document.getText().length);
@@ -30,7 +27,7 @@ export class Scope {
         kind: ScopeKind,
         startOffset: number,
         endOffset: number,
-        owner?: SourceDefinition
+        owner?: SourceDefinition,
     ): Scope {
         const child = new Scope(kind, this, owner, startOffset, endOffset);
         this.children.push(child);
@@ -83,16 +80,18 @@ export class Scope {
     }
 
     /**
-     * Lists all definitions that are visible at the given offset, 
+     * Lists all definitions that are visible at the given offset,
      * i.e. all definitions declared in this scope or any parent scope that are visible at the given offset.
-     * 
+     *
      * This method should be called on the innermost scope at the given offset
      */
     public listVisibleDefinitions(offset: number): Map<string, SourceDefinition> {
         const visible = new Map<string, SourceDefinition>();
 
         for (const [name, definitions] of this.definitionByName.entries()) {
-            const definition = definitions.findLast((def) => def.visibleFrom !== null && def.visibleFrom <= offset);
+            const definition = definitions.findLast(
+                (def) => def.visibleFrom !== null && def.visibleFrom <= offset,
+            );
             if (definition !== undefined) {
                 visible.set(name, definition);
             }
@@ -105,7 +104,9 @@ export class Scope {
                     continue;
                 }
 
-                const definition = definitions.findLast((def) => def.visibleFrom !== null && def.visibleFrom <= offset);
+                const definition = definitions.findLast(
+                    (def) => def.visibleFrom !== null && def.visibleFrom <= offset,
+                );
                 if (definition !== undefined) {
                     visible.set(name, definition);
                 }

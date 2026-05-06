@@ -6,11 +6,13 @@ import {
 } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import {
-    findSymbolAtPosition,
-} from "./analysis/queries.js";
+import { findSymbolAtPosition } from "./analysis/queries.js";
 import { getAnalysis } from "./analysis/service.js";
-import { type JsoniqAnalysis, type SourceDefinition, isSourceDefinition } from "./analysis/model.js";
+import {
+    type JsoniqAnalysis,
+    type SourceDefinition,
+    isSourceDefinition,
+} from "./analysis/model.js";
 
 interface RenameTarget {
     declaration: SourceDefinition;
@@ -29,7 +31,10 @@ interface RenameValidationResult {
  * @param position The Position in the document for which to prepare the rename (e.g. the position of the cursor in the editor)
  * @returns An object containing the range of text that would be renamed and a placeholder string for the new name if a rename can be performed at the given position, or null if a rename cannot be performed at that position
  */
-export async function prepareRename(document: TextDocument, position: Position): Promise<{ range: Range; placeholder: string } | null> {
+export async function prepareRename(
+    document: TextDocument,
+    position: Position,
+): Promise<{ range: Range; placeholder: string } | null> {
     const analysis = await getAnalysis(document);
     const target = findRenameTarget(analysis, position);
 
@@ -46,7 +51,7 @@ export async function prepareRename(document: TextDocument, position: Position):
 
 /**
  * Builds a WorkspaceEdit object representing the changes needed to rename the variable at the given position in the document to the new name, including all references to that variable.
- * 
+ *
  * @param document The TextDocument representing the JSONiq source code to analyze and edit
  * @param position The Position in the document for which to perform the rename (e.g. the position of the cursor in the editor)
  * @param newName The new name to assign to the variable at the given position, which must be a valid JSONiq variable name (including the leading '$' character)
@@ -97,10 +102,7 @@ export async function buildRenameWorkspaceEdit(
  * @param position The position in the document for which to find the rename target
  * @returns A RenameTarget object representing the variable declaration and range to rename for the variable at the given position, or null if no valid rename target is found
  */
-function findRenameTarget(
-    analysis: JsoniqAnalysis,
-    position: Position,
-): RenameTarget | null {
+function findRenameTarget(analysis: JsoniqAnalysis, position: Position): RenameTarget | null {
     const occurrence = findSymbolAtPosition(analysis, position);
     if (occurrence === undefined) {
         return null;
@@ -150,7 +152,8 @@ function validateVariableName(newName: string): RenameValidationResult {
         if (!ncNamePattern.test(part)) {
             return {
                 valid: false,
-                message: "Invalid JSONiq variable name. Expected '$' followed by NCName or prefix:NCName.",
+                message:
+                    "Invalid JSONiq variable name. Expected '$' followed by NCName or prefix:NCName.",
             };
         }
     }

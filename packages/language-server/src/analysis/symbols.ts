@@ -14,7 +14,7 @@ export class DocumentSymbolsBuilder {
     private readonly symbols: DocumentSymbol[] = [];
     private readonly owners: DocumentSymbolOwner[] = [];
 
-    public constructor(private readonly document: TextDocument) { }
+    public constructor(private readonly document: TextDocument) {}
 
     public build(): DocumentSymbol[] {
         const events = parseDocument(this.document).semanticEvents;
@@ -71,13 +71,15 @@ export class DocumentSymbolsBuilder {
 }
 
 function sameDeclaration(left: SemanticDeclaration, right: SemanticDeclaration): boolean {
-    return left.name === right.name
-        && left.kind === right.kind
-        && sameRange(left.range, right.range);
+    return (
+        left.name === right.name && left.kind === right.kind && sameRange(left.range, right.range)
+    );
 }
 
 function toDocumentSymbol(declaration: SemanticDeclaration): DocumentSymbol | undefined {
-    const name = sanitizeSymbolName(declaration.kind === "function" ? splitFunctionName(declaration.name) : declaration.name);
+    const name = sanitizeSymbolName(
+        declaration.kind === "function" ? splitFunctionName(declaration.name) : declaration.name,
+    );
     if (name === null) {
         return undefined;
     }
@@ -92,10 +94,9 @@ function toDocumentSymbol(declaration: SemanticDeclaration): DocumentSymbol | un
 }
 
 function declarationCanContainChildSymbols(kind: SemanticDeclarationKind): boolean {
-    return kind === "function"
-        || kind === "declare-variable"
-        || kind === "let"
-        || kind === "group-by";
+    return (
+        kind === "function" || kind === "declare-variable" || kind === "let" || kind === "group-by"
+    );
 }
 
 function splitFunctionName(name: string): string {

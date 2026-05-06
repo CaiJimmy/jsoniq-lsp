@@ -7,18 +7,12 @@ import {
     type Recognizer,
     Token,
 } from "antlr4ng";
-import {
-    Diagnostic,
-    DiagnosticSeverity,
-    type Range,
-} from "vscode-languageserver";
+import { Diagnostic, DiagnosticSeverity, type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { jsoniqLexer } from "./grammar/jsoniqLexer.js";
 import { jsoniqParser } from "./grammar/jsoniqParser.js";
-import type {
-    ParseResult,
-} from "server/parser/types/result.js";
+import type { ParseResult } from "server/parser/types/result.js";
 import { collectSemanticEvents } from "./semantic-events.js";
 
 export interface JsoniqParsedDocument extends ParseResult {
@@ -52,7 +46,11 @@ class JsoniqErrorListener extends BaseErrorListener {
     }
 
     private createRange(offendingSymbol: Token | null, line: number, column: number): Range {
-        if (offendingSymbol !== null && offendingSymbol.start >= 0 && offendingSymbol.stop >= offendingSymbol.start) {
+        if (
+            offendingSymbol !== null &&
+            offendingSymbol.start >= 0 &&
+            offendingSymbol.stop >= offendingSymbol.start
+        ) {
             return {
                 start: this.document.positionAt(offendingSymbol.start),
                 end: this.document.positionAt(offendingSymbol.stop + 1),
@@ -93,7 +91,11 @@ export function parseJsoniq(document: TextDocument): JsoniqParsedDocument {
     };
 }
 
-function createParser(source: string): { lexer: jsoniqLexer; parser: jsoniqParser; tokenStream: CommonTokenStream } {
+function createParser(source: string): {
+    lexer: jsoniqLexer;
+    parser: jsoniqParser;
+    tokenStream: CommonTokenStream;
+} {
     const input = CharStream.fromString(source);
     const lexer = new jsoniqLexer(input);
     const tokenStream = new CommonTokenStream(lexer);

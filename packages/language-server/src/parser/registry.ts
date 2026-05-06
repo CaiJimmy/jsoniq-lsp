@@ -3,9 +3,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import type { ParserAdapter } from "./types/adapter.js";
 import { jsoniqParserAdapter } from "./adapters/jsoniq/index.js";
 
-const adapters: ParserAdapter[] = [
-    jsoniqParserAdapter,
-];
+const adapters: ParserAdapter[] = [jsoniqParserAdapter];
 
 export function getParserAdapterForDocument(document: TextDocument): ParserAdapter {
     const adapter = adapters.find((candidate) => candidate.supports(document));

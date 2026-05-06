@@ -1,7 +1,5 @@
 import type { SemanticDeclaration } from "server/parser/types/semantic-events.js";
-import type {
-    SourceDefinition,
-} from "./model.js";
+import type { SourceDefinition } from "./model.js";
 import type { SemanticDeclarationKind } from "server/parser/types/declaration.js";
 
 interface PendingDeclaration {
@@ -26,8 +24,13 @@ export class PendingDeclarations {
             throw new Error(`Declaration ${declaration.name} exited without being entered.`);
         }
 
-        if (pending.declaration.name !== declaration.name || pending.declaration.kind !== declaration.kind) {
-            throw new Error(`Tried to exit declaration ${declaration.name} while inside ${pending.declaration.name}.`);
+        if (
+            pending.declaration.name !== declaration.name ||
+            pending.declaration.kind !== declaration.kind
+        ) {
+            throw new Error(
+                `Tried to exit declaration ${declaration.name} while inside ${pending.declaration.name}.`,
+            );
         }
 
         return pending.definition;

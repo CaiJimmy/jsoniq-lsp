@@ -1,4 +1,9 @@
-import { FunctionCallContext, FunctionDeclContext, NamedFunctionRefContext, VarRefContext } from "./grammar/jsoniqParser.js";
+import {
+    FunctionCallContext,
+    FunctionDeclContext,
+    NamedFunctionRefContext,
+    VarRefContext,
+} from "./grammar/jsoniqParser.js";
 
 /**
  * Extracts the variable name from a VarRefContext node, including the leading "$" character.
@@ -15,15 +20,21 @@ export function varRefNameOrNull(node: VarRefContext): string | null {
     return name === undefined || name === "" ? null : `$${name}`;
 }
 
-export function functionName(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): string {
+export function functionName(
+    node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext,
+): string {
     return (node._fn_name?.getText() ?? "").trim();
 }
 
-export function functionNameWithArity(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): string {
+export function functionNameWithArity(
+    node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext,
+): string {
     return `${functionName(node)}#${functionArity(node)}`;
 }
 
-export function functionNameWithArityOrNull(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): string | null {
+export function functionNameWithArityOrNull(
+    node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext,
+): string | null {
     const name = functionName(node);
     if (name === undefined || name === "") {
         return null;
@@ -32,7 +43,9 @@ export function functionNameWithArityOrNull(node: FunctionDeclContext | Function
     return `${name}#${functionArity(node)}`;
 }
 
-function functionArity(node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext): number {
+function functionArity(
+    node: FunctionDeclContext | FunctionCallContext | NamedFunctionRefContext,
+): number {
     if (node instanceof FunctionDeclContext) {
         return node.paramList()?.param().length ?? 0;
     } else if (node instanceof FunctionCallContext) {

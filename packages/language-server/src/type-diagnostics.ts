@@ -1,9 +1,4 @@
-import {
-    DiagnosticSeverity,
-    Range,
-    type Position,
-    type Diagnostic,
-} from "vscode-languageserver";
+import { DiagnosticSeverity, Range, type Position, type Diagnostic } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { getTypeInference, type WrapperTypeError } from "./wrapper/type-inference.js";
@@ -14,12 +9,11 @@ export async function collectTypeDiagnostics(document: TextDocument): Promise<Di
         return [];
     }
 
-    return response.body.typeErrors
-        .map((error) => toDiagnostic(document, error));
+    return response.body.typeErrors.map((error) => toDiagnostic(document, error));
 }
 
 function toDiagnostic(document: TextDocument, error: WrapperTypeError): Diagnostic {
-    const diagnosticRange = createRangeFromStartPosition(document, error, error.position)
+    const diagnosticRange = createRangeFromStartPosition(document, error, error.position);
 
     return {
         severity: DiagnosticSeverity.Warning,
@@ -44,6 +38,6 @@ function createRangeFromStartPosition(
         end: {
             line: start.line + 1,
             character: 0,
-        }
-    }
+        },
+    };
 }

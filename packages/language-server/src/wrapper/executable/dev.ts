@@ -18,18 +18,17 @@ export function resolveDevLaunchConfig(): WrapperLaunchConfig | undefined {
     }
 
     const runtimeClasspath = fs.readFileSync(classpathPath, "utf8").trim();
-    const classpath = runtimeClasspath.length === 0
-        ? localJarPath
-        : `${localJarPath}${path.delimiter}${runtimeClasspath}`;
+    const classpath =
+        runtimeClasspath.length === 0
+            ? localJarPath
+            : `${localJarPath}${path.delimiter}${runtimeClasspath}`;
 
     return {
         args: ["-cp", classpath, WRAPPER_MAIN_CLASS, "--daemon"],
     };
 }
 
-function pickLatestJarFromDirectory(
-    directory: string,
-): string | undefined {
+function pickLatestJarFromDirectory(directory: string): string | undefined {
     if (!fs.existsSync(directory)) {
         return undefined;
     }

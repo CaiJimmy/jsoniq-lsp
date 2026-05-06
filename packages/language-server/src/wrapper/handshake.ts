@@ -10,4 +10,7 @@ export interface HandshakeResponseBody {
     rumbleVersion: string;
 }
 
-export type HandshakeResponse = WrapperDaemonResponse<typeof REQUEST_TYPE_HANDSHAKE, HandshakeResponseBody>;
+export type HandshakeResponse = WrapperDaemonResponse<
+    typeof REQUEST_TYPE_HANDSHAKE,
+    HandshakeResponseBody
+>;

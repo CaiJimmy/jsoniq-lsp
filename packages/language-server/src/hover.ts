@@ -1,13 +1,7 @@
-import {
-    MarkupKind,
-    type Hover,
-    type Position,
-} from "vscode-languageserver";
+import { MarkupKind, type Hover, type Position } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
-import {
-    findSymbolAtPosition,
-} from "./analysis/queries.js";
+import { findSymbolAtPosition } from "./analysis/queries.js";
 import { getAnalysis } from "./analysis/service.js";
 import { isSourceDefinition, type Definition, type SourceDefinition } from "./analysis/model.js";
 import { getTypeInferenceIndex, TypeInferenceIndex } from "./type-inference/service.js";
@@ -45,8 +39,7 @@ function createHoverContent(typeInference: TypeInferenceIndex, declaration: Defi
             `declared at line ${declarationLine}`,
             `inferred type: \`${formatOptionalInferredType(typeInference, declaration)}\``,
         ].join("\n");
-    }
-    else {
+    } else {
         return [
             "```jsoniq",
             declaration.name,
@@ -57,7 +50,10 @@ function createHoverContent(typeInference: TypeInferenceIndex, declaration: Defi
     }
 }
 
-function formatOptionalInferredType(typeInference: TypeInferenceIndex, declaration: SourceDefinition): string {
+function formatOptionalInferredType(
+    typeInference: TypeInferenceIndex,
+    declaration: SourceDefinition,
+): string {
     const inferredType = typeInference.get(declaration);
     return inferredType === undefined ? "unknown" : formatInferredType(inferredType);
 }

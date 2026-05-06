@@ -17,7 +17,8 @@ export function createSourceDefinition(
         range: declaration.range,
         selectionRange: declaration.selectionRange,
         references: [],
-        visibleFrom: declaration.completed === false ? null : document.offsetAt(declaration.range.end),
+        visibleFrom:
+            declaration.completed === false ? null : document.offsetAt(declaration.range.end),
         isBuiltin: false as const,
     } satisfies Omit<SourceDefinition, "kind">;
 
@@ -44,7 +45,11 @@ export function createSourceDefinition(
         } satisfies SourceParameterDefinition;
     }
 
-    if (declaration.kind === "namespace" || declaration.kind === "context-item" || declaration.kind === "type") {
+    if (
+        declaration.kind === "namespace" ||
+        declaration.kind === "context-item" ||
+        declaration.kind === "type"
+    ) {
         /// TODO: Add more support for these kinds of definitions
         return {
             ...base,

@@ -30,7 +30,10 @@ describe("JSONiq go-to-definition", () => {
         ]);
 
         const declarationCharacter = firstLine.indexOf("$x") + 1;
-        const location = await findDefinitionLocation(document, { line: 0, character: declarationCharacter });
+        const location = await findDefinitionLocation(document, {
+            line: 0,
+            character: declarationCharacter,
+        });
 
         expect(location).toBeDefined();
         expect(location?.range.start.line).toBe(0);
@@ -44,7 +47,10 @@ describe("JSONiq go-to-definition", () => {
             "};",
         ]);
 
-        const location = await findDefinitionLocation(document, { line: 0, character: firstLine.indexOf("$x") });
+        const location = await findDefinitionLocation(document, {
+            line: 0,
+            character: firstLine.indexOf("$x"),
+        });
 
         expect(location).toBeDefined();
         expect(location?.range.start.line).toBe(0);
@@ -62,7 +68,10 @@ describe("JSONiq go-to-definition", () => {
 
         expect(location).toBeDefined();
         expect(location?.range.start).toEqual({ line: 0, character: "declare function ".length });
-        expect(location?.range.end).toEqual({ line: 0, character: "declare function local:f".length });
+        expect(location?.range.end).toEqual({
+            line: 0,
+            character: "declare function local:f".length,
+        });
     });
 
     it("returns null when position is not on a resolvable variable", async () => {

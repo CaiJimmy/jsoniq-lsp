@@ -9,4 +9,3 @@ export interface CompletionIntent {
     allowFunctions: boolean;
     keywords: ParserKeywordCompletion[];
 }
-

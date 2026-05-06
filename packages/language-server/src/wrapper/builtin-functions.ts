@@ -18,7 +18,10 @@ export interface BuiltinFunctionsRequestPayload {
     requestType: typeof REQUEST_TYPE_BUILTIN_FUNCTIONS;
 }
 
-export type BuiltinFunctionListResponse = WrapperDaemonResponse<typeof REQUEST_TYPE_BUILTIN_FUNCTIONS, BuiltInFunctionListResponseBody>;
+export type BuiltinFunctionListResponse = WrapperDaemonResponse<
+    typeof REQUEST_TYPE_BUILTIN_FUNCTIONS,
+    BuiltInFunctionListResponseBody
+>;
 
 export interface BuiltinFunctionDefinition extends BaseDefinition {
     name: string;
@@ -41,12 +44,14 @@ async function getBuiltinFunctionMap(): Promise<Map<string, BuiltinFunctionDefin
     }
 
     builtinDefinitionsPromise = (async () => {
-        const response = await getWrapperClient().sendRequest<typeof REQUEST_TYPE_BUILTIN_FUNCTIONS>(
-            BUILTIN_FUNCTIONS_REQUEST,
-        ).catch((error) => {
-            logger.warn(`Failed to fetch builtin function definitions from wrapper: ${String(error)}`);
-            return undefined;
-        });
+        const response = await getWrapperClient()
+            .sendRequest<typeof REQUEST_TYPE_BUILTIN_FUNCTIONS>(BUILTIN_FUNCTIONS_REQUEST)
+            .catch((error) => {
+                logger.warn(
+                    `Failed to fetch builtin function definitions from wrapper: ${String(error)}`,
+                );
+                return undefined;
+            });
 
         const builtinDefinitionsByName = new Map<string, BuiltinFunctionDefinition>();
 
@@ -68,7 +73,9 @@ async function getBuiltinFunctionMap(): Promise<Map<string, BuiltinFunctionDefin
     return builtinDefinitionsPromise;
 }
 
-export async function findBuiltinFunctionDefinition(nameWithArity: string): Promise<BuiltinFunctionDefinition | undefined> {
+export async function findBuiltinFunctionDefinition(
+    nameWithArity: string,
+): Promise<BuiltinFunctionDefinition | undefined> {
     const builtinFunctionMap = await getBuiltinFunctionMap();
     const direct = builtinFunctionMap.get(nameWithArity);
     if (direct !== undefined) {

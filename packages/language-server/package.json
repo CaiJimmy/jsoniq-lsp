@@ -2,16 +2,16 @@
     "name": "@jimmycai/jsoniq-language-server",
     "version": "0.1.0",
     "private": false,
-    "type": "module",
+    "repository": {
+        "url": "https://github.com/CaiJimmy/jsoniq-lsp"
+    },
     "files": [
         "dist"
     ],
+    "type": "module",
     "exports": {
         ".": "./dist/main.js",
         "./notifications": "./dist/notifications/index.js"
-    },
-    "repository": {
-        "url": "https://github.com/CaiJimmy/jsoniq-lsp"
     },
     "scripts": {
         "generate:grammar": "antlr-ng -Dlanguage=TypeScript --generate-visitor true --generate-listener false --output-directory src/parser/adapters/jsoniq/grammar src/parser/adapters/jsoniq/grammar/jsoniq.g4",

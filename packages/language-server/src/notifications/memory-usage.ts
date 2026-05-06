@@ -23,6 +23,6 @@ export function setMemoryUsageNotification(connection: any) {
             }, MEMORY_USAGE_POLL_INTERVAL_MS);
         }
     };
-    
+
     poll();
 }

@@ -19,7 +19,11 @@ function getCachedParsedDocument(document: TextDocument): CachedParsedDocument {
     const adapter = getParserAdapterForDocument(document);
     const cached = parseCache.get(document.uri);
 
-    if (cached !== undefined && cached.version === document.version && cached.adapterId === adapter.id) {
+    if (
+        cached !== undefined &&
+        cached.version === document.version &&
+        cached.adapterId === adapter.id
+    ) {
         return cached;
     }
 
@@ -41,7 +45,10 @@ export function parseDocument(document: TextDocument): ParseResult {
     return cached.parsed;
 }
 
-export function collectCompletionIntent(document: TextDocument, cursorOffset: number): CompletionIntent | null {
+export function collectCompletionIntent(
+    document: TextDocument,
+    cursorOffset: number,
+): CompletionIntent | null {
     const cached = getCachedParsedDocument(document);
     return cached.adapter.getCompletionIntent(cached.parsed, cursorOffset);
 }

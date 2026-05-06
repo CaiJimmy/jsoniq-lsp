@@ -4,7 +4,12 @@ import { createHash } from "node:crypto";
 const DOWNLOAD_PROGRESS_BAR_WIDTH = 24;
 
 export interface DownloadProgress {
-    stage: "download-started" | "download-progress" | "download-complete" | "verified" | "download-failed";
+    stage:
+        | "download-started"
+        | "download-progress"
+        | "download-complete"
+        | "verified"
+        | "download-failed";
     downloadedBytes: number;
     totalBytes: number;
     message?: string;
@@ -32,7 +37,8 @@ export function createTerminalProgressReporter(): DownloadProgressReporter | und
         }
 
         const boundedDownloadedBytes = Math.min(progress.downloadedBytes, progress.totalBytes);
-        const fraction = progress.totalBytes <= 0 ? 0 : boundedDownloadedBytes / progress.totalBytes;
+        const fraction =
+            progress.totalBytes <= 0 ? 0 : boundedDownloadedBytes / progress.totalBytes;
         const completedBars = Math.round(fraction * DOWNLOAD_PROGRESS_BAR_WIDTH);
         const bar = `${"=".repeat(completedBars)}${" ".repeat(DOWNLOAD_PROGRESS_BAR_WIDTH - completedBars)}`;
         const percentage = (fraction * 100).toFixed(1).padStart(5, " ");
@@ -47,12 +53,14 @@ export function createTerminalProgressReporter(): DownloadProgressReporter | und
             lastRenderedLine = line;
         }
 
-        if (progress.stage === "download-complete" || boundedDownloadedBytes >= progress.totalBytes) {
+        if (
+            progress.stage === "download-complete" ||
+            boundedDownloadedBytes >= progress.totalBytes
+        ) {
             process.stderr.write("\n");
         }
     };
 }
-
 
 interface DownloadMetadata {
     sha256: string;
@@ -67,7 +75,9 @@ export async function downloadWithProgress(
 ): Promise<DownloadMetadata> {
     const response = await fetch(url);
     if (!response.ok) {
-        throw new Error(`Failed to download wrapper jar: HTTP ${response.status} ${response.statusText}`);
+        throw new Error(
+            `Failed to download wrapper jar: HTTP ${response.status} ${response.statusText}`,
+        );
     }
 
     if (response.body === null) {
@@ -75,10 +85,15 @@ export async function downloadWithProgress(
     }
 
     const totalBytesHeader = response.headers.get("content-length");
-    const headerSizeBytes = totalBytesHeader === null ? undefined : Number.parseInt(totalBytesHeader, 10);
-    if (headerSizeBytes !== undefined && Number.isFinite(headerSizeBytes) && headerSizeBytes !== totalBytes) {
+    const headerSizeBytes =
+        totalBytesHeader === null ? undefined : Number.parseInt(totalBytesHeader, 10);
+    if (
+        headerSizeBytes !== undefined &&
+        Number.isFinite(headerSizeBytes) &&
+        headerSizeBytes !== totalBytes
+    ) {
         throw new Error(
-            `Wrapper jar size mismatch before download: expected ${totalBytes} bytes, got ${headerSizeBytes} bytes from HTTP headers.`
+            `Wrapper jar size mismatch before download: expected ${totalBytes} bytes, got ${headerSizeBytes} bytes from HTTP headers.`,
         );
     }
 

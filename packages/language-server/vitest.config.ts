@@ -6,6 +6,6 @@ export default defineConfig({
         exclude: ["dist/**", "node_modules/**"],
     },
     resolve: {
-        tsconfigPaths: true
-    }
+        tsconfigPaths: true,
+    },
 });

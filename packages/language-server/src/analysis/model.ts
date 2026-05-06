@@ -1,10 +1,7 @@
 import type { Diagnostic, Range } from "vscode-languageserver";
 
 import type { BuiltinFunctionDefinition } from "server/wrapper/builtin-functions.js";
-import type {
-    SemanticDeclarationKind,
-    VariableKind,
-} from "server/parser/types/declaration.js";
+import type { SemanticDeclarationKind, VariableKind } from "server/parser/types/declaration.js";
 import type { Scope } from "./scope.js";
 
 export type DefinitionKind = SemanticDeclarationKind | "builtin-function";
@@ -86,18 +83,28 @@ export interface JsoniqAnalysis {
     symbolIndex: SymbolIndexEntry[];
 }
 
-export function isSourceDefinition(declaration: BaseDefinition | undefined): declaration is SourceDefinition {
+export function isSourceDefinition(
+    declaration: BaseDefinition | undefined,
+): declaration is SourceDefinition {
     return declaration !== undefined && declaration.isBuiltin === false;
 }
 
-export function isSourceVariableDefinition(declaration: BaseDefinition | undefined): declaration is SourceVariableDefinition {
-    return ["declare-variable", "let", "for", "for-position", "group-by", "count"].includes(declaration?.kind ?? "");
+export function isSourceVariableDefinition(
+    declaration: BaseDefinition | undefined,
+): declaration is SourceVariableDefinition {
+    return ["declare-variable", "let", "for", "for-position", "group-by", "count"].includes(
+        declaration?.kind ?? "",
+    );
 }
 
-export function isSourceParameterDefinition(declaration: BaseDefinition | undefined): declaration is SourceParameterDefinition {
+export function isSourceParameterDefinition(
+    declaration: BaseDefinition | undefined,
+): declaration is SourceParameterDefinition {
     return isSourceDefinition(declaration) && declaration.kind === "parameter";
 }
 
-export function isSourceFunctionDefinition(declaration: BaseDefinition | undefined): declaration is SourceFunctionDefinition {
+export function isSourceFunctionDefinition(
+    declaration: BaseDefinition | undefined,
+): declaration is SourceFunctionDefinition {
     return isSourceDefinition(declaration) && declaration.kind === "function";
 }

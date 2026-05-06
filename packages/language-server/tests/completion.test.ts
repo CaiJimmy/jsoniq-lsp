@@ -48,7 +48,7 @@ describe("JSONiq completion", () => {
         });
 
         expect(labelsAtCursor).not.toContain("$");
-        expect(labelsAtCursor.length).toBe(0);      /// Declaring variable name, avoid any suggestion
+        expect(labelsAtCursor.length).toBe(0); /// Declaring variable name, avoid any suggestion
     });
 
     it("does not suggest anything after typing a function parameter prefix", async () => {
@@ -82,9 +82,7 @@ describe("JSONiq completion", () => {
     });
 
     it("does not suggest keywords when a function name is expected", async () => {
-        const document = testDocument("completion-function-name", [
-            "declare function ",
-        ]);
+        const document = testDocument("completion-function-name", ["declare function "]);
 
         const labelsAtCursor = await completionLabels(document, {
             line: 0,
@@ -127,7 +125,6 @@ describe("JSONiq completion", () => {
         expect(labelsAtCursor).not.toContain("if");
     });
 
-
     it("replaces typed variable prefix to avoid duplicating '$'", async () => {
         const document = testDocument("completion-var-prefix-text-edit", [
             "let $a := 2",
@@ -138,7 +135,9 @@ describe("JSONiq completion", () => {
             character: "return $".length,
         };
 
-        const item = (await findCompletions(document, position)).find((completion) => completion.label === "$a");
+        const item = (await findCompletions(document, position)).find(
+            (completion) => completion.label === "$a",
+        );
 
         expect(item?.textEdit).toEqual({
             range: {

@@ -4,4 +4,4 @@ export const MEMORY_USAGE_NOTIFICATION = "jsoniq/memory-usage";
 export type MemoryUsage = {
     languageServer: number;
     wrapper: number | null;
-}   
+};

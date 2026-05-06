@@ -28,7 +28,9 @@ function readReleaseManifest(): WrapperReleaseManifest {
     const manifest = JSON.parse(manifestRaw) as WrapperReleaseManifest;
 
     if (!Number.isFinite(manifest.jarSizeBytes) || manifest.jarSizeBytes <= 0) {
-        throw new Error(`Wrapper release manifest contains invalid jarSizeBytes: '${manifest.jarSizeBytes}'.`);
+        throw new Error(
+            `Wrapper release manifest contains invalid jarSizeBytes: '${manifest.jarSizeBytes}'.`,
+        );
     }
 
     return manifest;
@@ -36,7 +38,9 @@ function readReleaseManifest(): WrapperReleaseManifest {
 
 const logger = createLogger("wrapper:jar-resolution/production");
 
-export async function resolveProductionJarPath(options: WrapperResolutionOptions = {}): Promise<string> {
+export async function resolveProductionJarPath(
+    options: WrapperResolutionOptions = {},
+): Promise<string> {
     const manifest = readReleaseManifest();
     const cachedJarPath = path.join(WRAPPER_JAR_PRODUCTION_FOLDER, WRAPPER_REMOTE_JAR_FILE);
 
@@ -64,13 +68,17 @@ export async function resolveProductionJarPath(options: WrapperResolutionOptions
         );
         if (downloadedJar.sizeBytes !== manifest.jarSizeBytes) {
             throw new Error(
-                `Downloaded wrapper jar size mismatch: expected ${manifest.jarSizeBytes} bytes, got ${downloadedJar.sizeBytes} bytes.`
+                `Downloaded wrapper jar size mismatch: expected ${manifest.jarSizeBytes} bytes, got ${downloadedJar.sizeBytes} bytes.`,
             );
         }
 
-        if (manifest.jarSha256 !== undefined && manifest.jarSha256.length > 0 && downloadedJar.sha256 !== manifest.jarSha256) {
+        if (
+            manifest.jarSha256 !== undefined &&
+            manifest.jarSha256.length > 0 &&
+            downloadedJar.sha256 !== manifest.jarSha256
+        ) {
             throw new Error(
-                `Downloaded wrapper jar hash mismatch: expected '${manifest.jarSha256}', got '${downloadedJar.sha256}'.`
+                `Downloaded wrapper jar hash mismatch: expected '${manifest.jarSha256}', got '${downloadedJar.sha256}'.`,
             );
         }
 
@@ -94,7 +102,9 @@ export async function resolveProductionJarPath(options: WrapperResolutionOptions
     return cachedJarPath;
 }
 
-export async function resolveProdLaunchConfig(options: WrapperResolutionOptions = {}): Promise<WrapperLaunchConfig> {
+export async function resolveProdLaunchConfig(
+    options: WrapperResolutionOptions = {},
+): Promise<WrapperLaunchConfig> {
     const cachedJarPath = await resolveProductionJarPath(options);
     return {
         args: ["-jar", cachedJarPath, "--daemon"],

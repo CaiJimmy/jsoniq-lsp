@@ -1,5 +1,5 @@
 import { ChildProcessWithoutNullStreams, spawn, execFile } from "node:child_process";
-import { promisify } from 'node:util';
+import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
@@ -15,7 +15,10 @@ import type {
 } from "./protocol.js";
 
 type ResponseByType = {
-    [RequestType in WrapperRequestType]: WrapperDaemonResponse<RequestType, WrapperResponseBodyByType[RequestType]>;
+    [RequestType in WrapperRequestType]: WrapperDaemonResponse<
+        RequestType,
+        WrapperResponseBodyByType[RequestType]
+    >;
 };
 
 type AnyWrapperResponse = ResponseByType[WrapperRequestType];
@@ -97,16 +100,22 @@ class RumbleWrapperClient {
         }
 
         try {
-            const handshakeResponse = await this.sendRequestInternal<typeof REQUEST_TYPE_HANDSHAKE>({
-                requestType: REQUEST_TYPE_HANDSHAKE,
-            });
+            const handshakeResponse = await this.sendRequestInternal<typeof REQUEST_TYPE_HANDSHAKE>(
+                {
+                    requestType: REQUEST_TYPE_HANDSHAKE,
+                },
+            );
 
             this.rumbleVersion = handshakeResponse.body.rumbleVersion;
             this.handshakeCompleted = true;
-            logger.info(`Handshake with wrapper successful. Response: ${JSON.stringify(handshakeResponse)}`);
-        }
-        catch (error) {
-            logger.error("Handshake with wrapper failed:", error instanceof Error ? error : String(error));
+            logger.info(
+                `Handshake with wrapper successful. Response: ${JSON.stringify(handshakeResponse)}`,
+            );
+        } catch (error) {
+            logger.error(
+                "Handshake with wrapper failed:",
+                error instanceof Error ? error : String(error),
+            );
             this.dispose();
             throw error instanceof Error ? error : new Error(String(error));
         }
@@ -128,14 +137,14 @@ class RumbleWrapperClient {
     }
 
     public async sendRequest<RequestType extends WrapperRequestType>(
-        payload: RequestPayloadByType[RequestType]
+        payload: RequestPayloadByType[RequestType],
     ): Promise<ResponseByType[RequestType]> {
         await this.connect();
         return this.sendRequestInternal(payload);
     }
 
     private async sendRequestInternal<RequestType extends WrapperRequestType>(
-        payload: RequestPayloadByType[RequestType]
+        payload: RequestPayloadByType[RequestType],
     ): Promise<ResponseByType[RequestType]> {
         const id = this.nextRequestId;
         this.nextRequestId += 1;
@@ -173,8 +182,14 @@ class RumbleWrapperClient {
                     }
                 });
             } catch (error) {
-                logger.error("Failed to write to wrapper stdin:", error instanceof Error ? error : String(error));
-                this.rejectPending(id, error instanceof Error ? error : new Error("Wrapper write failed."));
+                logger.error(
+                    "Failed to write to wrapper stdin:",
+                    error instanceof Error ? error : String(error),
+                );
+                this.rejectPending(
+                    id,
+                    error instanceof Error ? error : new Error("Wrapper write failed."),
+                );
             }
         });
     }
@@ -275,7 +290,9 @@ class RumbleWrapperClient {
         const { stdout } = await execFileAsync("ps", ["-o", "rss=", "-p", String(pid)]);
         const rssKb = Number.parseInt(stdout.trim(), 10);
         if (!Number.isFinite(rssKb)) {
-            throw new Error(`Could not parse wrapper memory usage for pid ${pid}: '${stdout.trim()}'`);
+            throw new Error(
+                `Could not parse wrapper memory usage for pid ${pid}: '${stdout.trim()}'`,
+            );
         }
 
         return {

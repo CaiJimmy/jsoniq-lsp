@@ -1,8 +1,4 @@
-import {
-    ParserRuleContext,
-    TerminalNode,
-    type ParseTree,
-} from "antlr4ng";
+import { ParserRuleContext, TerminalNode, type ParseTree } from "antlr4ng";
 import { type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
@@ -42,8 +38,10 @@ export function rangeFromNode(node: ParserRuleContext | ParseTree, document: Tex
 }
 
 export function sameRange(left: Range, right: Range): boolean {
-    return left.start.line === right.start.line
-        && left.start.character === right.start.character
-        && left.end.line === right.end.line
-        && left.end.character === right.end.character;
+    return (
+        left.start.line === right.start.line &&
+        left.start.character === right.start.character &&
+        left.end.line === right.end.line &&
+        left.end.character === right.end.character
+    );
 }

@@ -12,12 +12,8 @@
         "sourceMap": true,
         "skipLibCheck": true,
         "paths": {
-            "server/*": [
-                "./src/*"
-            ]
+            "server/*": ["./src/*"]
         }
     },
-    "include": [
-        "src",
-    ]
+    "include": ["src"]
 }

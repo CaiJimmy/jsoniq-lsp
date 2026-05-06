@@ -15,53 +15,60 @@ describe("JSONiq references", () => {
         ].join("\n");
         const document = testDocument("references-shadowing", source);
 
-        const locations = await findReferenceLocations(document, positionAtNth(document, "$x", 2), false);
+        const locations = await findReferenceLocations(
+            document,
+            positionAtNth(document, "$x", 2),
+            false,
+        );
 
-        expect(locations.map((location) => location.range.start.line)).toEqual([
-            2,
-            3,
-        ]);
+        expect(locations.map((location) => location.range.start.line)).toEqual([2, 3]);
     });
 
     it("includes declaration when requested", async () => {
-        const source = [
-            "for $x at $pos in (1, 2, 3)",
-            "let $y := $x + 1",
-            "return $x + $y",
-        ].join("\n");
+        const source = ["for $x at $pos in (1, 2, 3)", "let $y := $x + 1", "return $x + $y"].join(
+            "\n",
+        );
         const document = testDocument("references-include-decl", source);
 
-        const withoutDeclaration = await findReferenceLocations(document, positionAtNth(document, "$x", 2), false);
-        const withDeclaration = await findReferenceLocations(document, positionAtNth(document, "$x", 2), true);
+        const withoutDeclaration = await findReferenceLocations(
+            document,
+            positionAtNth(document, "$x", 2),
+            false,
+        );
+        const withDeclaration = await findReferenceLocations(
+            document,
+            positionAtNth(document, "$x", 2),
+            true,
+        );
 
-        expect(withoutDeclaration.map((location) => location.range.start.line)).toEqual([
-            1,
-            2,
-        ]);
-        expect(withDeclaration.map((location) => location.range.start.line)).toEqual([
-            0,
-            1,
-            2,
-        ]);
+        expect(withoutDeclaration.map((location) => location.range.start.line)).toEqual([1, 2]);
+        expect(withDeclaration.map((location) => location.range.start.line)).toEqual([0, 1, 2]);
     });
 
     it("returns empty result outside variable identifiers", async () => {
         const source = "declare function local:f($x) { $x };";
         const document = testDocument("references-miss", source);
 
-        const locations = await findReferenceLocations(document, positionAt(document, "declare"), true);
+        const locations = await findReferenceLocations(
+            document,
+            positionAt(document, "declare"),
+            true,
+        );
 
         expect(locations).toEqual([]);
     });
 
     it("finds references for a function from its declaration", async () => {
-        const source = [
-            "declare function local:f($x) { $x };",
-            "local:f(1) + local:f(2)",
-        ].join("\n");
+        const source = ["declare function local:f($x) { $x };", "local:f(1) + local:f(2)"].join(
+            "\n",
+        );
         const document = testDocument("references-function", source);
 
-        const locations = await findReferenceLocations(document, positionAt(document, "local:f"), true);
+        const locations = await findReferenceLocations(
+            document,
+            positionAt(document, "local:f"),
+            true,
+        );
 
         expect(locations.map((location) => location.range.start)).toEqual([
             { line: 0, character: "declare function ".length },
@@ -78,7 +85,11 @@ describe("JSONiq references", () => {
         ].join("\n");
         const document = testDocument("references-function-overloads", source);
 
-        const locations = await findReferenceLocations(document, positionAt(document, "local:f(1, 2)"), true);
+        const locations = await findReferenceLocations(
+            document,
+            positionAt(document, "local:f(1, 2)"),
+            true,
+        );
 
         expect(locations.map((location) => location.range.start)).toEqual([
             { line: 0, character: "declare function ".length },
