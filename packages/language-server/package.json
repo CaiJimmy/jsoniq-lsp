@@ -23,7 +23,9 @@
         "test:samples": "pnpm test -- tests/test-samples.test.ts",
         "clean": "rm -rf dist",
         "prepack": "pnpm run build:prod",
-        "ensure-wrapper": "node ./dist/wrapper/executable/index.js"
+        "ensure-wrapper": "node ./dist/wrapper/executable/index.js",
+        "lint": "oxlint",
+        "lint:fix": "oxlint --fix"
     },
     "dependencies": {
         "antlr-ng": "^1.0.10",
@@ -34,6 +36,7 @@
     },
     "devDependencies": {
         "@types/node": "^25.6.0",
+        "oxlint": "^1.63.0",
         "tsc-alias": "^1.8.17",
         "typescript": "^6.0.3",
         "vitest": "^4.1.5"
