@@ -1,5 +1,4 @@
 import { ParseTreeWalker, type ParseTree } from "antlr4ng";
-import { type Range } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 import { jsoniqListener } from "./grammar/jsoniqListener.js";
@@ -49,8 +48,8 @@ class SemanticEventCollector {
         this.events.push({ type: "exitDeclaration", declaration });
     }
 
-    public reference(name: string, kind: SemanticReferenceEvent["kind"], range: Range): void {
-        this.events.push({ type: "reference", name, kind, range });
+    public reference(name: string, kind: SemanticReferenceEvent["kind"], node: ParseTree): void {
+        this.events.push({ type: "reference", name, kind, range: rangeFromNode(node, this.document) });
     }
 
     public scope(node: ParseTree, enter: boolean, scopeKind: ScopeKind): void {
@@ -174,7 +173,7 @@ class JsoniqSemanticEventListener extends jsoniqListener {
 
         const name = varRefNameOrNull(node);
         if (name !== null) {
-            this.events.reference(name, "variable", rangeFromNode(node, this.document));
+            this.events.reference(name, "variable", node);
         }
     };
 
@@ -247,22 +246,20 @@ class JsoniqSemanticEventListener extends jsoniqListener {
     }
 
     private forVarDeclarations(node: ForVarContext): SemanticDeclaration[] {
-        return node
-            .declaredVarRef()
-            .flatMap((declaredVarRef, index) =>
-                this.variableDeclaration(
-                    index === 0 ? "for" : "for-position",
-                    node,
-                    declaredVarRef,
-                ),
+        const declarations: SemanticDeclaration[] = [];
+        for (const [index, declaredVarRef] of node.declaredVarRef().entries()) {
+            declarations.push(
+                ...this.variableDeclaration(index === 0 ? "for" : "for-position", node, declaredVarRef),
             );
+        }
+        return declarations;
     }
 
     private functionReference(node: FunctionCallContext | NamedFunctionRefContext): void {
         const nameNode = node._fn_name ?? node.qname();
         const name = functionNameWithArityOrNull(node);
         if (name !== null && nameNode !== null) {
-            this.events.reference(name, "function", rangeFromNode(nameNode, this.document));
+            this.events.reference(name, "function", nameNode);
         }
     }
 }
