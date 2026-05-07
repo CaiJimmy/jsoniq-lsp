@@ -1,7 +1,6 @@
 {
     "name": "jsoniq-lsp-workspace",
     "private": true,
-    "packageManager": "pnpm@11.0.5",
     "scripts": {
         "build": "run-s build:core build:client",
         "build:prod": "pnpm run clean && run-s build:core:prod build:client",
@@ -24,9 +23,24 @@
         "fmt:check": "run-p fmt:check:server fmt:check:client",
         "fmt:server": "pnpm --filter @jimmycai/jsoniq-language-server run fmt",
         "fmt:client": "pnpm --filter jsoniq-vscode-extension run fmt",
-        "fmt": "run-p fmt:server fmt:client"
+        "fmt": "run-p fmt:server fmt:client",
+        "prepare": "husky || true"
     },
     "devDependencies": {
-        "npm-run-all2": "^8.0.4"
-    }
+        "husky": "^9.1.7",
+        "lint-staged": "^17.0.2",
+        "npm-run-all2": "^8.0.4",
+        "oxfmt": "^0.48.0",
+        "oxlint": "^1.63.0"
+    },
+    "lint-staged": {
+        "*.{js,jsx,ts,tsx,mjs,cjs}": [
+            "pnpm run lint --"
+        ],
+        "*": [
+            "pnpm run fmt:check:server --no-error-on-unmatched-pattern --",
+            "pnpm run fmt:check:client --no-error-on-unmatched-pattern --"
+        ]
+    },
+    "packageManager": "pnpm@11.0.5"
 }
