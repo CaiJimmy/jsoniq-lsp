@@ -24,16 +24,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 execArgv: ["--nolazy", "--inspect=6009"],
                 env: {
                     ...process.env,
-                    "JSONIQ_LSP_DEBUG": "1",
+                    JSONIQ_LSP_DEBUG: "1",
                 },
             },
         },
     };
 
     const clientOptions: LanguageClientOptions = {
-        documentSelector: [
-            { scheme: "file", language: "jsoniq" },
-        ],
+        documentSelector: [{ scheme: "file", language: "jsoniq" }],
     };
 
     client = new LanguageClient(

@@ -10,11 +10,7 @@
         "exactOptionalPropertyTypes": true,
         "sourceMap": true,
         "skipLibCheck": true,
-        "lib": [
-            "ES2022"
-        ]
+        "lib": ["ES2022"]
     },
-    "include": [
-        "src"
-    ]
+    "include": ["src"]
 }

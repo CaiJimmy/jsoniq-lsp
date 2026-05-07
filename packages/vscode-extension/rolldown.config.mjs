@@ -8,9 +8,7 @@ export default defineConfig({
         sourcemap: process.env.BUILD !== "production",
         minify: process.env.BUILD === "production",
     },
-    external: [
-        "vscode",
-    ],
+    external: ["vscode"],
     platform: "node",
     treeshake: true,
 });

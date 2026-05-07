@@ -9,11 +9,15 @@ export function registerWrapperMemoryUsageNotification(client: LanguageClient): 
     const notificationDisposable = client.onNotification(
         MEMORY_USAGE_NOTIFICATION,
         (usage: MemoryUsage) => {
-            const totalMemory = usage.wrapper !== null ? usage.languageServer + usage.wrapper : usage.languageServer;
+            const totalMemory =
+                usage.wrapper !== null
+                    ? usage.languageServer + usage.wrapper
+                    : usage.languageServer;
             statusBarItem.text = `$(pulse) Memory usage: ${formatMemoryUsage(totalMemory)}`;
             statusBarItem.tooltip = [
                 "JSONiq Language Server: " + formatMemoryUsage(usage.languageServer),
-                "Java Wrapper: " + (usage.wrapper !== null ? formatMemoryUsage(usage.wrapper) : "N/A"),
+                "Java Wrapper: " +
+                    (usage.wrapper !== null ? formatMemoryUsage(usage.wrapper) : "N/A"),
             ].join("\n");
             statusBarItem.show();
         },

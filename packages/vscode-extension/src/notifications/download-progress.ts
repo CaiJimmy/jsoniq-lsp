@@ -1,6 +1,9 @@
 import * as vscode from "vscode";
 import type { LanguageClient } from "vscode-languageclient/node.js";
-import { DownloadProgress, WRAPPER_DOWNLOAD_PROGRESS_NOTIFICATION } from "@jimmycai/jsoniq-language-server/notifications";
+import {
+    DownloadProgress,
+    WRAPPER_DOWNLOAD_PROGRESS_NOTIFICATION,
+} from "@jimmycai/jsoniq-language-server/notifications";
 
 interface ActiveProgress {
     report: (value: { increment?: number; message?: string }) => void;
@@ -8,7 +11,9 @@ interface ActiveProgress {
     lastPercentage: number;
 }
 
-export function registerWrapperDownloadProgressNotification(client: LanguageClient): vscode.Disposable {
+export function registerWrapperDownloadProgressNotification(
+    client: LanguageClient,
+): vscode.Disposable {
     let active: ActiveProgress | undefined;
 
     const finish = (): void => {
@@ -22,8 +27,8 @@ export function registerWrapperDownloadProgressNotification(client: LanguageClie
         }
 
         const progressState: ActiveProgress = {
-            report: () => { },
-            resolve: () => { },
+            report: () => {},
+            resolve: () => {},
             lastPercentage: 0,
         };
 
@@ -58,9 +63,10 @@ export function registerWrapperDownloadProgressNotification(client: LanguageClie
             return;
         }
 
-        const percentage = progress.totalBytes > 0
-            ? Math.min(100, (progress.downloadedBytes / progress.totalBytes) * 100)
-            : 0;
+        const percentage =
+            progress.totalBytes > 0
+                ? Math.min(100, (progress.downloadedBytes / progress.totalBytes) * 100)
+                : 0;
         const increment = Math.max(0, percentage - active.lastPercentage);
         active.lastPercentage = percentage;
         active.report({
@@ -69,7 +75,10 @@ export function registerWrapperDownloadProgressNotification(client: LanguageClie
         });
     };
 
-    const notificationDisposable = client.onNotification(WRAPPER_DOWNLOAD_PROGRESS_NOTIFICATION, update);
+    const notificationDisposable = client.onNotification(
+        WRAPPER_DOWNLOAD_PROGRESS_NOTIFICATION,
+        update,
+    );
 
     return new vscode.Disposable(() => {
         notificationDisposable.dispose();
