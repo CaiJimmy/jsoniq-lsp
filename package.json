@@ -3,8 +3,10 @@
     "private": true,
     "packageManager": "pnpm@11.0.5",
     "scripts": {
-        "build": "pnpm run build:wrapper && pnpm run build:server && pnpm run build:client",
-        "build:prod": "pnpm run clean && pnpm run build:wrapper:prod && pnpm run build:server:prod && pnpm run build:client",
+        "build": "run-s build:core build:client",
+        "build:prod": "pnpm run clean && run-s build:core:prod build:client",
+        "build:core": "run-p build:wrapper build:server",
+        "build:core:prod": "run-p build:wrapper:prod build:server:prod",
         "build:wrapper": "mvn -f packages/rumble-lsp-wrapper/pom.xml -q package",
         "build:wrapper:prod": "mvn -f packages/rumble-lsp-wrapper/pom.xml -q -Pprod package",
         "build:server": "pnpm --filter @jimmycai/jsoniq-language-server run build",
@@ -13,7 +15,9 @@
         "generate:grammar": "pnpm --filter @jimmycai/jsoniq-language-server run generate:grammar",
         "start": "pnpm --filter @jimmycai/jsoniq-language-server run start",
         "test": "pnpm --filter @jimmycai/jsoniq-language-server run test",
-        "test:samples": "pnpm --filter @jimmycai/jsoniq-language-server run test:samples",
         "clean": "pnpm --filter @jimmycai/jsoniq-language-server run clean && mvn -f packages/rumble-lsp-wrapper/pom.xml -q clean && pnpm --filter jsoniq-vscode-extension run clean"
+    },
+    "devDependencies": {
+        "npm-run-all2": "^8.0.4"
     }
 }
