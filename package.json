@@ -15,7 +15,9 @@
         "generate:grammar": "pnpm --filter @jimmycai/jsoniq-language-server run generate:grammar",
         "start": "pnpm --filter @jimmycai/jsoniq-language-server run start",
         "test": "pnpm --filter @jimmycai/jsoniq-language-server run test",
-        "clean": "pnpm --filter @jimmycai/jsoniq-language-server run clean && mvn -f packages/rumble-lsp-wrapper/pom.xml -q clean && pnpm --filter jsoniq-vscode-extension run clean"
+        "clean": "pnpm --filter @jimmycai/jsoniq-language-server run clean && mvn -f packages/rumble-lsp-wrapper/pom.xml -q clean && pnpm --filter jsoniq-vscode-extension run clean",
+        "lint": "pnpm --filter @jimmycai/jsoniq-language-server run lint",
+        "fmt:check": "pnpm --filter @jimmycai/jsoniq-language-server run fmt:check"
     },
     "devDependencies": {
         "npm-run-all2": "^8.0.4"
