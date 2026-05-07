@@ -49,7 +49,12 @@ class SemanticEventCollector {
     }
 
     public reference(name: string, kind: SemanticReferenceEvent["kind"], node: ParseTree): void {
-        this.events.push({ type: "reference", name, kind, range: rangeFromNode(node, this.document) });
+        this.events.push({
+            type: "reference",
+            name,
+            kind,
+            range: rangeFromNode(node, this.document),
+        });
     }
 
     public scope(node: ParseTree, enter: boolean, scopeKind: ScopeKind): void {
@@ -249,7 +254,11 @@ class JsoniqSemanticEventListener extends jsoniqListener {
         const declarations: SemanticDeclaration[] = [];
         for (const [index, declaredVarRef] of node.declaredVarRef().entries()) {
             declarations.push(
-                ...this.variableDeclaration(index === 0 ? "for" : "for-position", node, declaredVarRef),
+                ...this.variableDeclaration(
+                    index === 0 ? "for" : "for-position",
+                    node,
+                    declaredVarRef,
+                ),
             );
         }
         return declarations;
