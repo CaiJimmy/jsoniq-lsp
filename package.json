@@ -21,7 +21,10 @@
         "lint": "run-p lint:server lint:client",
         "fmt:check:server": "pnpm --filter @jimmycai/jsoniq-language-server run fmt:check",
         "fmt:check:client": "pnpm --filter jsoniq-vscode-extension run fmt:check",
-        "fmt:check": "run-p fmt:check:server fmt:check:client"
+        "fmt:check": "run-p fmt:check:server fmt:check:client",
+        "fmt:server": "pnpm --filter @jimmycai/jsoniq-language-server run fmt",
+        "fmt:client": "pnpm --filter jsoniq-vscode-extension run fmt",
+        "fmt": "run-p fmt:server fmt:client"
     },
     "devDependencies": {
         "npm-run-all2": "^8.0.4"
