@@ -5,6 +5,8 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 WRAPPER_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 
 RUMBLE_DIR="$WRAPPER_DIR/rumble"
+RUMBLE_LSP_ASSEMBLY_DESCRIPTOR="$WRAPPER_DIR/rumble-lsp-assembly.xml"
+RUMBLE_LSP_ASSEMBLY_POM="$WRAPPER_DIR/rumble-lsp-pom.xml"
 
 WRAPPER_TARGET_DIR="$WRAPPER_DIR/target"
 WRAPPER_GENERATED_RESOURCES_DIR="$WRAPPER_DIR/generated-resources"
@@ -61,23 +63,27 @@ EOF
 }
 
 build_signature() {
+    assembly_descriptor_sha=$(shasum -a 256 "$RUMBLE_LSP_ASSEMBLY_DESCRIPTOR" | awk '{print $1}')
+    assembly_pom_sha=$(shasum -a 256 "$RUMBLE_LSP_ASSEMBLY_POM" | awk '{print $1}')
     cat <<EOF
 commit=$RUMBLE_COMMIT
+rumbleVersion=$RUMBLE_VERSION
+assemblyDescriptor=$assembly_descriptor_sha
+assemblyPom=$assembly_pom_sha
 jar=$RUMBLE_JAR
 EOF
 }
 
-stamp_commit_matches_checkout() {
+stamp_matches_current_build() {
     if [ ! -f "$WRAPPER_BUILD_STAMP" ]; then
         return 1
     fi
 
-    stamp_commit=$(sed -n 's/^commit=//p' "$WRAPPER_BUILD_STAMP")
-    [ "$stamp_commit" = "$RUMBLE_COMMIT" ]
+    [ "$(cat "$WRAPPER_BUILD_STAMP")" = "$CURRENT_BUILD_SIGNATURE" ]
 }
 
 resolve_rumble_jar() {
-    jar_path=$(ls -1t "$RUMBLE_TARGET_DIR"/rumbledb-*-jar-with-dependencies.jar 2>/dev/null | head -n 1 || true)
+    jar_path=$(ls -1t "$RUMBLE_TARGET_DIR"/rumbledb-*-lsp.jar 2>/dev/null | head -n 1 || true)
     if [ -z "$jar_path" ]; then
         return 1
     fi
@@ -88,8 +94,21 @@ resolve_rumble_jar() {
 extract_rumble_version_from_jar() {
     jar_file=$(basename "$1")
     version=${jar_file#rumbledb-}
+    version=${version%-lsp.jar}
     version=${version%-jar-with-dependencies.jar}
     printf '%s\n' "$version"
+}
+
+detect_rumble_version_from_pom() {
+    awk '
+        match($0, /<version>[^<]+<\/version>/) {
+            value = $0
+            sub(/^.*<version>/, "", value)
+            sub(/<\/version>.*$/, "", value)
+            print value
+            exit
+        }
+    ' "$RUMBLE_DIR/pom.xml"
 }
 
 update_rumble_jar_link() {
@@ -103,6 +122,7 @@ ensure_rumble_checkout
 RUMBLE_COMMIT=$(git -C "$RUMBLE_DIR" rev-parse HEAD)
 RUMBLE_COMMIT_SHORT=$(git -C "$RUMBLE_DIR" rev-parse --short HEAD)
 RUMBLE_CURRENT_REF=$(detect_rumble_ref)
+RUMBLE_VERSION=$(detect_rumble_version_from_pom)
 RUMBLE_JAR=$(resolve_rumble_jar 2>/dev/null || true)
 CURRENT_BUILD_SIGNATURE=$(build_signature)
 
@@ -111,13 +131,15 @@ if [ -d "$WRAPPER_CLASSES_DIR" ]; then
     write_metadata_file "$WRAPPER_COMPILED_METADATA_FILE"
 fi
 
-if [ -z "$RUMBLE_JAR" ]; then
-    echo "Building Rumble from source..." >&2
-    (cd "$RUMBLE_DIR" && mvn -q -DskipTests clean compile assembly:single)
+if [ -z "$RUMBLE_JAR" ] || ! stamp_matches_current_build; then
+    echo "Building Rumble LSP assembly from source..." >&2
+    (cd "$RUMBLE_DIR" && mvn -q -DskipTests clean compile)
+    (
+        cd "$WRAPPER_DIR"
+        mvn -q -f "$RUMBLE_LSP_ASSEMBLY_POM" -Drumble.version="$RUMBLE_VERSION" assembly:single
+    )
     RUMBLE_JAR=$(resolve_rumble_jar)
     CURRENT_BUILD_SIGNATURE=$(build_signature)
-elif ! stamp_commit_matches_checkout; then
-    echo "Adopting existing Rumble jar for commit $RUMBLE_COMMIT_SHORT..." >&2
 fi
 
 update_rumble_jar_link

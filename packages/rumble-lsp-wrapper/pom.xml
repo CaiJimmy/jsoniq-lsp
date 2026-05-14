@@ -129,6 +129,7 @@
                                             dest="${project.build.outputDirectory}">
                                             <patternset>
                                                 <exclude name="**/module-info.class" />
+                                                <exclude name="**/librocksdbjni-*" />
                                                 <exclude name="META-INF/*.SF" />
                                                 <exclude name="META-INF/*.DSA" />
                                                 <exclude name="META-INF/*.RSA" />
@@ -158,6 +159,7 @@
                                             <artifact>*:*</artifact>
                                             <excludes>
                                                 <exclude>**/module-info.class</exclude>
+                                                <exclude>**/librocksdbjni-*</exclude>
                                                 <exclude>META-INF/*.SF</exclude>
                                                 <exclude>META-INF/*.DSA</exclude>
                                                 <exclude>META-INF/*.RSA</exclude>
